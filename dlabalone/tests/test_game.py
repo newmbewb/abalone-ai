@@ -14,7 +14,7 @@ import random
 def test1():
     game = GameState.new_game(5)
     # bot = RandomKillBot()
-    bot = AlphaBetaBot(depth=2)
+    bot = AlphaBetaBot(depth=3)
     step = 0
     profiler.start('game')
     while not game.is_over():

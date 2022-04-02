@@ -3,16 +3,21 @@ import copy
 
 
 class Board(object):
+    max_xy = 0
+    size = 0
+    valid_grids = []
+
     def __init__(self, size):
-        self.size = size
-        self.max_xy = size * 2 - 1
+        cls = type(self)
+        cls.size = size
+        cls.max_xy = size * 2 - 1
         self.grid = {}
         self.dead_stones = {Player.black: 0, Player.white: 0}
-        self.valid_grids = []
-        for y in range(self.max_xy):
-            for x in range(self.max_xy):
+        cls.valid_grids = []
+        for y in range(cls.max_xy):
+            for x in range(cls.max_xy):
                 if self.is_on_grid((x, y)):
-                    self.valid_grids.append((x, y))
+                    cls.valid_grids.append((x, y))
 
     def _move_single_stone(self, stone, direction, stones_to_move):
         stones_to_move.discard(stone)
@@ -39,12 +44,13 @@ class Board(object):
             self._move_single_stone(stone, direction, stones_to_move)
 
     def is_on_grid(self, point):
+        cls = type(self)
         x, y = point
         if x < 0 or y < 0:
             return False
-        elif x >= self.max_xy or y >= self.max_xy:
+        elif x >= cls.max_xy or y >= cls.max_xy:
             return False
-        elif abs(x - y) >= self.size:
+        elif abs(x - y) >= cls.size:
             return False
         else:
             return True
@@ -163,7 +169,7 @@ class GameState(object):
     def legal_moves(self, separate_kill=False):
         ret_kill = []
         ret_normal = []
-        for x, y in self.board.valid_grids:
+        for x, y in type(self.board).valid_grids:
             point = (x, y)
             player = self.board.grid.get(point, None)
             if player != self.next_player:
