@@ -15,17 +15,16 @@ import random
 def test1():
     game = GameState.new_game(5)
     # bot = RandomKillBot()
-    # bot = AlphaBetaBot(depth=3, width=3)
-    bot = MCTSBot()
+    # bot = AlphaBetaBot(depth=4, width=10)
+    bot = MCTSBot(name='MCTS', num_rounds=1000, temperature=1.5)
     step = 0
     profiler.start('game')
     while not game.is_over():
-        # game = game.apply_move(random.choice(game.legal_moves()))
         game = game.apply_move(bot.select_move(game))
         step += 1
-        if step % 100 == 0:
-            print(f"{'----' * 5} {step} steps {'----' * 5}")
-            print_board(game.board)
+        # if step % 100 == 0:
+        #     print(f"{'----' * 5} {step} steps {'----' * 5}")
+        #     print_board(game.board)
     profiler.end('game')
     print_board(game.board)
     print('====' * 10)
@@ -42,11 +41,13 @@ def run_game(bot_black, bot_white):
         else:
             game = game.apply_move(bot_white.select_move(game))
         step += 1
-    print(f'step: {step}')
+
     if game.winner() == Player.black:
-        return bot_black.name, step
+        bot_winner = bot_black
     else:
-        return bot_white.name, step
+        bot_winner = bot_white
+    print(f'step: {step}, winner: {bot_winner.name}')
+    return bot_winner.name, step
 
 
 def compare_bot(bot1, bot2, run_iter=100, threads=None):
@@ -79,8 +80,12 @@ if __name__ == '__main__':
 
     profiler.start('game')
 
-    test1()
-    # compare_bot(AlphaBetaBot("AB2d", depth=2), AlphaBetaBot("AB2d50w", depth=3, width=50), run_iter=3, threads=3)
+    if False:
+        test1()
+    else:
+        bot_A = MCTSBot(name='MCTS1000r1.5t', num_rounds=1000, temperature=1.5)
+        bot_B = MCTSBot(name='MCTS1000r0.1t', num_rounds=1000, temperature=0.1)
+        compare_bot(bot_A, bot_B, run_iter=10, threads=3)
 
     profiler.end('game')
     profiler.print('game')

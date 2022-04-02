@@ -28,7 +28,6 @@ class MCTSNode(object):
 
     def add_random_child(self):
         # Select better move first
-        # index = random.randint(0, len(self.unvisited_moves) - 1)
         new_move = self.unvisited_moves.pop(0)
         new_game_state = self.game_state.apply_move(new_move)
         new_node = MCTSNode(new_game_state, self, new_move)
@@ -96,7 +95,7 @@ class MCTSBot(Agent):
         """Select a child according to the upper confidence bound for
         trees (UCT) metric.
         """
-        total_rollouts = sum(child.num_rollouts for child in node.children)
+        total_rollouts = node.num_rollouts
         log_rollouts = math.log(total_rollouts)
 
         best_score = -1
@@ -115,13 +114,11 @@ class MCTSBot(Agent):
 
     @staticmethod
     def simulate_random_game(game):
-        bots = {
-            Player.black: RandomKillBot(),
-            Player.white: RandomKillBot(),
-        }
-        for _ in range(60):
-            if game.is_over():
-                break
-            bot_move = bots[game.next_player].select_move(game)
-            game = game.apply_move(bot_move)
         return game.win_probability(Player.black)
+        # bot = RandomKillBot()
+        # for _ in range(50):
+        #     if game.is_over():
+        #         break
+        #     bot_move = bot.select_move(game)
+        #     game.apply_move_lite(bot_move)
+        # return game.win_probability(Player.black)
