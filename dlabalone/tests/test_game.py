@@ -5,6 +5,7 @@ from dlabalone.ablboard import GameState
 from dlabalone.abltypes import Player
 from dlabalone.agent.random_kill_first import RandomKillBot
 from dlabalone.agent.alphabeta import AlphaBetaBot
+from dlabalone.agent.mcts import MCTSBot
 from dlabalone.utils import print_board
 from dlabalone.tests.test_utils import profiler
 import cProfile
@@ -14,7 +15,8 @@ import random
 def test1():
     game = GameState.new_game(5)
     # bot = RandomKillBot()
-    bot = AlphaBetaBot(depth=3)
+    bot = AlphaBetaBot(depth=3, width=3)
+    bot = MCTSBot()
     step = 0
     profiler.start('game')
     while not game.is_over():
@@ -65,16 +67,20 @@ def compare_bot(bot1, bot2, run_iter=100, threads=None):
 
 if __name__ == '__main__':
     random.seed(0)
-    pr = cProfile.Profile()
-    pr.enable()
+    enable_profile = False
+    pr = None
+    if enable_profile:
+        pr = cProfile.Profile()
+        pr.enable()
 
     profiler.start('game')
 
     test1()
-    # compare_bot(AlphaBetaBot("ABBot2", depth=2), AlphaBetaBot("ABBot3", depth=3), run_iter=8)
+    # compare_bot(AlphaBetaBot("ABBot2", depth=2), AlphaBetaBot("ABBot3_3", depth=3, width=100), run_iter=10, threads=4)
 
     profiler.end('game')
     profiler.print('game')
 
-    pr.disable()
-    pr.dump_stats('profile.pstat')
+    if enable_profile:
+        pr.disable()
+        pr.dump_stats('profile.pstat')
