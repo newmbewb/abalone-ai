@@ -1,7 +1,9 @@
+import copy
 import random
 from dlabalone.ablboard import GameState
 from dlabalone.abltypes import Player
 from dlabalone.agent.base import Agent
+from dlabalone.utils import print_board
 
 
 __all__ = ['AlphaBetaBot']
@@ -29,8 +31,9 @@ def alpha_beta_result(game_state, max_depth, best_black, best_white, eval_fn):
 
     best_so_far = MIN_SCORE
     for candidate_move in legal_moves:
-        next_state = game_state.apply_move(candidate_move)
-        opponent_best_result = alpha_beta_result(next_state, max_depth - 1, best_black, best_white, eval_fn)
+        undo_move = game_state.apply_move_lite(candidate_move)
+        opponent_best_result = alpha_beta_result(game_state, max_depth - 1, best_black, best_white, eval_fn)
+        game_state.undo(undo_move)
         our_result = -1 * opponent_best_result
 
         if our_result > best_so_far:
@@ -52,9 +55,10 @@ def alpha_beta_result(game_state, max_depth, best_black, best_white, eval_fn):
 
 
 def score_game_state(game_state):
-    dead_stones = game_state.board.dead_stones
-    next_player = game_state.next_player
-    return dead_stones[next_player.other] - dead_stones[next_player]
+    if game_state.next_player == Player.black:
+        return game_state.board.dead_stones_white - game_state.board.dead_stones_black
+    else:
+        return game_state.board.dead_stones_black - game_state.board.dead_stones_white
 
 
 class AlphaBetaBot(Agent):
@@ -66,9 +70,12 @@ class AlphaBetaBot(Agent):
         assert not game_state.is_over()
         best_score = MIN_SCORE
         best_moves = []
-        for move in game_state.legal_moves():
-            score = alpha_beta_result(game_state.apply_move(move), self.max_depth - 1, MIN_SCORE,
+        legal_moves = game_state.legal_moves()
+        for move in legal_moves:
+            undo_move = game_state.apply_move_lite(move)
+            score = alpha_beta_result(game_state, self.max_depth - 1, MIN_SCORE,
                                       MIN_SCORE, score_game_state) * -1
+            game_state.undo(undo_move)
             if score > best_score:
                 best_score = score
                 best_moves = [move]

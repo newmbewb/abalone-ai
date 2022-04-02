@@ -58,7 +58,7 @@ def compare_bot(bot1, bot2, run_iter=100, threads=None):
 
     def print_win_rate(bot):
         win_count = winner_list.count(bot.name)
-        print("%s: %d/%d (%3.3f%%)"%(bot.name, win_count, run_iter, win_count / run_iter * 100))
+        print("%s: %d/%d (%3.3f%%)" % (bot.name, win_count, run_iter, win_count / run_iter * 100))
     print_win_rate(bot1)
     print_win_rate(bot2)
 

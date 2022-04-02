@@ -12,36 +12,45 @@ class Board(object):
         cls.size = size
         cls.max_xy = size * 2 - 1
         self.grid = {}
-        self.dead_stones = {Player.black: 0, Player.white: 0}
+        self.dead_stones_black = 0
+        self.dead_stones_white = 0
         cls.valid_grids = []
         for y in range(cls.max_xy):
             for x in range(cls.max_xy):
                 if self.is_on_grid((x, y)):
                     cls.valid_grids.append((x, y))
 
-    def _move_single_stone(self, stone, direction, stones_to_move):
+    def _move_single_stone(self, stone, direction, stones_to_move, undo_move=None):
         stones_to_move.discard(stone)
         owner = self.grid[stone]
+        if undo_move is not None:
+            undo_move.append((stone, owner))
         new_place = add(stone, direction)
 
         if not self.is_on_grid(new_place):
             # The stone dies
-            self.dead_stones[owner] += 1
+            if owner == Player.black:
+                self.dead_stones_black += 1
+            else:
+                self.dead_stones_white += 1
             del self.grid[stone]
             return
 
         if new_place in self.grid:
             # Another stone is there
-            self._move_single_stone(new_place, direction, stones_to_move)
+            self._move_single_stone(new_place, direction, stones_to_move, undo_move)
+        else:
+            if undo_move is not None:
+                undo_move.append((new_place, None))
 
         del self.grid[stone]
         self.grid[new_place] = owner
 
-    def move_stones(self, stones, direction):
+    def move_stones(self, stones, direction, undo_move=None):
         stones_to_move = set(stones)
         while stones_to_move:
             stone = stones_to_move.pop()
-            self._move_single_stone(stone, direction, stones_to_move)
+            self._move_single_stone(stone, direction, stones_to_move, undo_move)
 
     def is_on_grid(self, point):
         cls = type(self)
@@ -60,6 +69,25 @@ class GameState(object):
     def __init__(self, board, next_player):
         self.board = board
         self.next_player = next_player
+
+    def is_same(self, other_state):
+        if self.next_player != other_state.next_player:
+            print(f'Wrong next_player!!! this: {self.next_player}, other: {other_state.next_player}')
+            return False
+        board = self.board
+        other_board = other_state.board
+        if board.dead_stones_white != other_board.dead_stones_white or \
+                board.dead_stones_black != other_board.dead_stones_black:
+            print('Wrong dead stone count!!!')
+            return False
+        if len(board.grid) != len(other_board.grid):
+            print('Wrong grid count!!!')
+            return False
+        for stone, owner in board.grid.items():
+            if other_board.grid[stone] != owner:
+                print('Wrong grid!!!')
+                return False
+        return True
 
     def is_valid_move(self, stones, direction):
         # Check whether all stones are on grid
@@ -128,6 +156,23 @@ class GameState(object):
                     return False
             return True
 
+    def apply_move_lite(self, move):
+        dead_stone_white = self.board.dead_stones_white
+        dead_stone_black = self.board.dead_stones_black
+        undo_grid = []
+        self.next_player = self.next_player.other
+        self.board.move_stones(move.stones, move.direction, undo_grid)
+        return dead_stone_white, dead_stone_black, undo_grid
+
+    def undo(self, undo_move):
+        self.board.dead_stones_white, self.board.dead_stones_black, undo_grid = undo_move
+        self.next_player = self.next_player.other
+        for stone, owner in reversed(undo_grid):
+            if owner is not None:
+                self.board.grid[stone] = owner
+            else:
+                del self.board.grid[stone]
+
     def apply_move(self, move):
         next_board = copy.deepcopy(self.board)
         next_board.move_stones(move.stones, move.direction)
@@ -161,9 +206,8 @@ class GameState(object):
         return GameState(board, Player.black)
 
     def is_over(self):
-        for dead_stones in self.board.dead_stones.values():
-            if dead_stones >= 6:
-                return True
+        if self.board.dead_stones_black >= 6 or self.board.dead_stones_white >= 6:
+            return True
         return False
 
     def legal_moves(self, separate_kill=False):
@@ -215,9 +259,10 @@ class GameState(object):
             return ret_kill + ret_normal
 
     def winner(self):
-        for player, dead_stones in self.board.dead_stones.items():
-            if dead_stones >= 6:
-                return player.other
+        if self.board.dead_stones_black >= 6:
+            return Player.white
+        elif self.board.dead_stones_white >= 6:
+            return Player.black
         return None
 
 
