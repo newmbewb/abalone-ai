@@ -15,7 +15,7 @@ import random
 def test1():
     game = GameState.new_game(5)
     # bot = RandomKillBot()
-    bot = AlphaBetaBot(depth=3, width=3)
+    # bot = AlphaBetaBot(depth=3, width=3)
     bot = MCTSBot()
     step = 0
     profiler.start('game')
@@ -23,9 +23,9 @@ def test1():
         # game = game.apply_move(random.choice(game.legal_moves()))
         game = game.apply_move(bot.select_move(game))
         step += 1
-        # if step % 20 == 0:
-        #     print_board(game.board)
-        #     print('----' * 10)
+        if step % 100 == 0:
+            print(f"{'----' * 5} {step} steps {'----' * 5}")
+            print_board(game.board)
     profiler.end('game')
     print_board(game.board)
     print('====' * 10)
@@ -42,10 +42,11 @@ def run_game(bot_black, bot_white):
         else:
             game = game.apply_move(bot_white.select_move(game))
         step += 1
+    print(f'step: {step}')
     if game.winner() == Player.black:
-        return bot_black.name
+        return bot_black.name, step
     else:
-        return bot_white.name
+        return bot_white.name, step
 
 
 def compare_bot(bot1, bot2, run_iter=100, threads=None):
@@ -56,11 +57,14 @@ def compare_bot(bot1, bot2, run_iter=100, threads=None):
     if threads is None:
         threads = os.cpu_count()
     with multiprocessing.Pool(processes=threads) as p:
-        winner_list = p.starmap(run_game, args)
+        result_list = p.starmap(run_game, args)
+    winner_list = list(map(lambda x: x[0], result_list))
+    total_step = sum(map(lambda x: x[1], result_list))
 
     def print_win_rate(bot):
         win_count = winner_list.count(bot.name)
         print("%s: %d/%d (%3.3f%%)" % (bot.name, win_count, run_iter, win_count / run_iter * 100))
+    print(f'Total steps: {total_step}')
     print_win_rate(bot1)
     print_win_rate(bot2)
 
@@ -76,7 +80,7 @@ if __name__ == '__main__':
     profiler.start('game')
 
     test1()
-    # compare_bot(AlphaBetaBot("ABBot2", depth=2), AlphaBetaBot("ABBot3_3", depth=3, width=100), run_iter=10, threads=4)
+    # compare_bot(AlphaBetaBot("AB2d", depth=2), AlphaBetaBot("AB2d50w", depth=3, width=50), run_iter=3, threads=3)
 
     profiler.end('game')
     profiler.print('game')

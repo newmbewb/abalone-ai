@@ -265,6 +265,14 @@ class GameState(object):
             return Player.black
         return None
 
+    def win_probability(self, player):
+        black_remain = 6 - self.board.dead_stones_black
+        white_remain = 6 - self.board.dead_stones_white
+        if player == Player.white:
+            return white_remain / (white_remain + black_remain)
+        else:
+            return black_remain / (white_remain + black_remain)
+
 
 class Move(object):
     def __init__(self, stones, direction):
