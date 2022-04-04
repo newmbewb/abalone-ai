@@ -7,18 +7,23 @@ class Board(object):
     size = 0
     valid_grids = []
 
-    def __init__(self, size):
-        cls = type(self)
+    @classmethod
+    def set_size(cls, size):
         cls.size = size
         cls.max_xy = size * 2 - 1
-        self.grid = {}
-        self.dead_stones_black = 0
-        self.dead_stones_white = 0
         cls.valid_grids = []
         for y in range(cls.max_xy):
             for x in range(cls.max_xy):
-                if self.is_on_grid((x, y)):
+                if cls.is_on_grid((x, y)):
                     cls.valid_grids.append((x, y))
+
+    def __init__(self, grid={}, dead_stones_black=0, dead_stones_white=0):
+        self.grid = grid
+        self.dead_stones_black = dead_stones_black
+        self.dead_stones_white = dead_stones_white
+
+    def __deepcopy__(self, memodict={}):
+        return Board(copy.copy(self.grid), self.dead_stones_black, self.dead_stones_white)
 
     def _move_single_stone(self, stone, direction, stones_to_move, undo_move=None):
         stones_to_move.discard(stone)
@@ -52,8 +57,8 @@ class Board(object):
             stone = stones_to_move.pop()
             self._move_single_stone(stone, direction, stones_to_move, undo_move)
 
-    def is_on_grid(self, point):
-        cls = type(self)
+    @classmethod
+    def is_on_grid(cls, point):
         x, y = point
         if x < 0 or y < 0:
             return False
@@ -180,7 +185,8 @@ class GameState(object):
 
     @classmethod
     def new_game(cls, board_size):
-        board = Board(board_size)
+        Board.set_size(board_size)
+        board = Board()
         # Black
         for x in range(0, 4 + 1):
             point = x, 0
@@ -280,8 +286,8 @@ class Move(object):
         self.direction = direction
 
     def __eq__(self, other):
-        my_stones = copy.deepcopy(self.stones)
-        other_stones = copy.deepcopy(other.stones)
+        my_stones = copy.copy(self.stones)
+        other_stones = copy.copy(other.stones)
         my_stones.sort()
         other_stones.sort()
         if my_stones == other_stones and self.direction == other.direction:

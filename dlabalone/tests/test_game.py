@@ -15,8 +15,8 @@ import random
 def test1():
     game = GameState.new_game(5)
     # bot = RandomKillBot()
-    # bot = AlphaBetaBot(depth=4, width=10)
-    bot = MCTSBot(name='MCTS', num_rounds=1000, temperature=1.5)
+    # bot = AlphaBetaBot(depth=2, width=10)
+    bot = MCTSBot(name='MCTS', num_rounds=2000, temperature=0.5)
     step = 0
     profiler.start('game')
     while not game.is_over():
@@ -72,7 +72,7 @@ def compare_bot(bot1, bot2, run_iter=100, threads=None):
 
 if __name__ == '__main__':
     random.seed(0)
-    enable_profile = False
+    enable_profile = True
     pr = None
     if enable_profile:
         pr = cProfile.Profile()
@@ -80,7 +80,8 @@ if __name__ == '__main__':
 
     profiler.start('game')
 
-    if False:
+    if True:
+    # if False:
         test1()
     else:
         bot_A = MCTSBot(name='MCTS1000r1.5t', num_rounds=1000, temperature=1.5)
