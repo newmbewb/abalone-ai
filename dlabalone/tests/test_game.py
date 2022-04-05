@@ -12,11 +12,14 @@ import cProfile
 import random
 
 
+draw_name = 'Draw'
+
+
 def test1():
     game = GameState.new_game(5)
     # bot = RandomKillBot()
-    # bot = AlphaBetaBot(depth=2, width=10)
-    bot = MCTSBot(name='MCTS', num_rounds=2000, temperature=0.5)
+    # bot = AlphaBetaBot(depth=3, width=100)
+    bot = MCTSBot(name='MCTS', num_rounds=4000, temperature=0.1)
     step = 0
     profiler.start('game')
     while not game.is_over():
@@ -32,22 +35,29 @@ def test1():
     profiler.print('game')
 
 
-def run_game(bot_black, bot_white):
+def run_game(idx, bot_pair):
+    bot_black, bot_white = bot_pair
     game = GameState.new_game(5)
     step = 0
+    is_draw = False
     while not game.is_over():
         if game.next_player == Player.black:
             game = game.apply_move(bot_black.select_move(game))
         else:
             game = game.apply_move(bot_white.select_move(game))
         step += 1
+        if step > 3000:
+            is_draw = True
+            break
 
-    if game.winner() == Player.black:
-        bot_winner = bot_black
+    if is_draw:
+        winner_name = draw_name
+    elif game.winner() == Player.black:
+        winner_name = bot_black.name
     else:
-        bot_winner = bot_white
-    print(f'step: {step}, winner: {bot_winner.name}')
-    return bot_winner.name, step
+        winner_name = bot_white.name
+    print(f'step:{step:4d}, winner: {winner_name}')
+    return winner_name, step
 
 
 def compare_bot(bot1, bot2, run_iter=100, threads=None):
@@ -58,38 +68,78 @@ def compare_bot(bot1, bot2, run_iter=100, threads=None):
     if threads is None:
         threads = os.cpu_count()
     with multiprocessing.Pool(processes=threads) as p:
-        result_list = p.starmap(run_game, args)
+        result_list = p.starmap(run_game, enumerate(args))
     winner_list = list(map(lambda x: x[0], result_list))
     total_step = sum(map(lambda x: x[1], result_list))
 
-    def print_win_rate(bot):
-        win_count = winner_list.count(bot.name)
-        print("%s: %d/%d (%3.3f%%)" % (bot.name, win_count, run_iter, win_count / run_iter * 100))
+    def print_win_rate(name):
+        win_count = winner_list.count(name)
+        print("%s: %d/%d (%3.3f%%)" % (name, win_count, run_iter, win_count / run_iter * 100))
     print(f'Total steps: {total_step}')
-    print_win_rate(bot1)
-    print_win_rate(bot2)
+    print_win_rate(bot1.name)
+    print_win_rate(bot2.name)
+    print_win_rate(draw_name)
 
 
 if __name__ == '__main__':
     random.seed(0)
-    enable_profile = True
+    enable_profile = False
+    print(f"Profile: {str(enable_profile)}")
     pr = None
     if enable_profile:
         pr = cProfile.Profile()
         pr.enable()
 
+    ####################################
+    # profiler.start('game')
+    #
+    # # if True:
+    # if False:
+    #     test1()
+    # else:
+    #     bot_A = AlphaBetaBot(name='AB3d', depth=3)
+    #     bot_B = MCTSBot(name='MCTS4000r0.0001t', num_rounds=4000, temperature=0.001)
+    #     compare_bot(bot_A, bot_B, run_iter=10, threads=3)
+    #
+    # profiler.end('game')
+    # profiler.print('game')
+    ####################################
     profiler.start('game')
 
-    if True:
-    # if False:
-        test1()
-    else:
-        bot_A = MCTSBot(name='MCTS1000r1.5t', num_rounds=1000, temperature=1.5)
-        bot_B = MCTSBot(name='MCTS1000r0.1t', num_rounds=1000, temperature=0.1)
-        compare_bot(bot_A, bot_B, run_iter=10, threads=3)
+    bot_A = MCTSBot(name='MCTS100000r0.5t',   num_rounds=100000, temperature=0.5)
+    bot_B = MCTSBot(name='MCTS100000r0.1t',   num_rounds=100000, temperature=0.1)
+    compare_bot(bot_A, bot_B, run_iter=10, threads=4)
 
     profiler.end('game')
     profiler.print('game')
+    ####################################
+    profiler.start('game')
+
+    bot_A = MCTSBot(name='MCTS100000r0.1t',   num_rounds=100000, temperature=0.1)
+    bot_B = MCTSBot(name='MCTS100000r0.01t',  num_rounds=100000, temperature=0.01)
+    compare_bot(bot_A, bot_B, run_iter=10, threads=4)
+
+    profiler.end('game')
+    profiler.print('game')
+    ####################################
+    profiler.start('game')
+
+    bot_A = MCTSBot(name='MCTS100000r0.01t',  num_rounds=100000, temperature=0.01)
+    bot_B = MCTSBot(name='MCTS100000r0.001t', num_rounds=100000, temperature=0.001)
+    compare_bot(bot_A, bot_B, run_iter=10, threads=4)
+
+    profiler.end('game')
+    profiler.print('game')
+    ####################################
+    profiler.start('game')
+
+    bot_A = MCTSBot(name='MCTS100000r1.0t',  num_rounds=100000, temperature=1.0)
+    bot_B = MCTSBot(name='MCTS100000r0.5t',  num_rounds=100000, temperature=0.5)
+    compare_bot(bot_A, bot_B, run_iter=10, threads=4)
+
+    profiler.end('game')
+    profiler.print('game')
+    ####################################
 
     if enable_profile:
         pr.disable()

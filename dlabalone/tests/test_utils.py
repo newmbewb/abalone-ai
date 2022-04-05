@@ -1,7 +1,12 @@
-from dlabalone.ablboard import Move
+from dlabalone.ablboard import Move, Board
 import time
+from dlabalone.abltypes import Player
+
 
 move_list_delimiter = '&'
+board_move_seperator = '&'
+char_next_player = 'o'
+char_other_player = 'x'
 
 
 def is_same_move_set(list_a, list_b):
@@ -18,6 +23,50 @@ def is_same_move_set(list_a, list_b):
             return False
     assert len(list_a) == 0, 'Wrong code'
     return True
+
+
+##################################
+# Data Encode/Decode Functions
+##################################
+def encode_state_to_str(state, max_xy):
+    board = [['.' for _ in range(max_xy)] for _ in range(max_xy)]
+    if state.next_player == Player.black:
+        char_black = char_next_player
+        char_white = char_other_player
+    else:
+        char_white = char_next_player
+        char_black = char_other_player
+    for xy, player in state.board.grid.items():
+        x, y = xy
+        if player == Player.black:
+            board[y][x] = char_black
+        elif player == Player.white:
+            board[y][x] = char_white
+        else:
+            assert False
+    return ''.join(map(lambda x: ''.join(x), board))
+
+
+def decode_board_from_str(board_str, max_xy, next_player=Player.black):
+    if next_player == Player.black:
+        char_black = char_next_player
+        char_white = char_other_player
+    else:
+        char_white = char_next_player
+        char_black = char_other_player
+    black_stones = 0
+    white_stones = 0
+    grid = {}
+    for i, c in enumerate(board_str):
+        y = i // max_xy
+        x = i % max_xy
+        if c == char_black:
+            grid[(x, y)] = Player.black
+            black_stones += 1
+        elif c == char_white:
+            grid[(x, y)] = Player.white
+            white_stones += 1
+    return Board(grid, 14 - black_stones, 14 - white_stones)
 
 
 ##################################
@@ -38,6 +87,31 @@ def save_file_move_list(filename, move_list):
     move_str_list = move_list_delimiter.join(map(str, move_list))
     fd.write(move_str_list)
     fd.close()
+
+
+def save_file_board_move_pair(filename, pair_list):
+    fd = open(filename, 'w')
+    # Save metadata
+    fd.write(f'{pair_list[0][0].board.size},{len(pair_list)}\n')
+    max_xy = pair_list[0][0].board.max_xy
+    for state, move in pair_list:
+        fd.write(f'{encode_state_to_str(state, max_xy)}{board_move_seperator}{str(move)}\n')
+    fd.close()
+
+
+def load_file_board_move_pair(filename):
+    fd = open(filename, 'r')
+    size, length = fd.readline().split(',')
+    Board.set_size(int(size))
+    max_xy = Board.max_xy
+    pair_list = []
+    next_player = Player.black
+    for line in fd:
+        board_str, move_str = line.split(board_move_seperator)
+        pair_list.append((decode_board_from_str(board_str, max_xy, next_player), Move.str_to_move(move_str)))
+        next_player = next_player.other
+    fd.close()
+    return pair_list
 
 
 ##################################
