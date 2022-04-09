@@ -17,8 +17,11 @@ class Board(object):
                 if cls.is_on_grid((x, y)):
                     cls.valid_grids.append((x, y))
 
-    def __init__(self, grid={}, dead_stones_black=0, dead_stones_white=0):
-        self.grid = grid
+    def __init__(self, grid=None, dead_stones_black=0, dead_stones_white=0):
+        if grid is None:
+            self.grid = {}
+        else:
+            self.grid = grid
         self.dead_stones_black = dead_stones_black
         self.dead_stones_white = dead_stones_white
 

@@ -69,7 +69,7 @@ def run_game(idx, bot_pair):
         board_str = encode_board_str(game.board)
         count = past_boards.get(board_str, 0) + 1
         past_boards[board_str] = count
-        if count >= 10:
+        if count >= 30:
             is_draw = True
             break
 
