@@ -18,3 +18,20 @@ def print_board(board):
             if player == Player.white:
                 print('X ', end='')
         print('')
+
+
+def encode_board_str(board):
+    max_xy = board.max_xy
+    board_char = [['.' for _ in range(max_xy)] for _ in range(max_xy)]
+    char_black = 'o'
+    char_white = 'x'
+    for xy, player in board.grid.items():
+        x, y = xy
+        if player == Player.black:
+            board_char[y][x] = char_black
+        elif player == Player.white:
+            board_char[y][x] = char_white
+        else:
+            assert False
+    return ''.join(map(lambda c: ''.join(c), board_char))
+

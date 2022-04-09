@@ -78,11 +78,11 @@ class MCTSBot(Agent):
                 node.record_black_win_probability(black_win_probability)
                 node = node.parent
 
-        scored_moves = [
-            (child.winning_frac(game_state.next_player), child.move, child.num_rollouts)
-            for child in root.children
-        ]
-        scored_moves.sort(key=lambda x: x[0], reverse=True)
+        # scored_moves = [
+        #     (child.winning_frac(game_state.next_player), child.move, child.num_rollouts)
+        #     for child in root.children
+        # ]
+        # scored_moves.sort(key=lambda x: x[0], reverse=True)
 
         # Having performed as many MCTS rounds as we have time for, we now pick a move.
         best_move = None

@@ -5,15 +5,17 @@ from dlabalone.abltypes import Player
 from dlabalone.agent.random_kill_first import RandomKillBot
 from dlabalone.agent.alphabeta import AlphaBetaBot
 from dlabalone.agent.mcts import MCTSBot
-from dlabalone.utils import print_board
+from dlabalone.utils import print_board, encode_board_str
 from dlabalone.tests.test_utils import profiler, save_file_board_move_pair, load_file_board_move_pair
 import cProfile
 import random
 import sys
+from datetime import datetime
 
 
 draw_name = 'Draw'
-global_filename = '../generated_games/game_%d.txt'
+date = datetime.now().strftime('%y%m%d%H%M%S')
+global_filename = f'../generated_games/mcts/game_MCTS20000r0.01t_{date}_%d-%s.txt'
 
 
 def test1():
@@ -53,6 +55,7 @@ def run_game(idx, bot_pair):
     step = 0
     is_draw = False
     pair_list = []
+    past_boards = {}
     while not game.is_over():
         if game.next_player == Player.black:
             move = bot_black.select_move(game)
@@ -61,10 +64,27 @@ def run_game(idx, bot_pair):
         pair_list.append((game, move))
         game = game.apply_move(move)
         step += 1
-        if step > 3000:
+
+        # If a same board repeats too much, the game is draw
+        board_str = encode_board_str(game.board)
+        count = past_boards.get(board_str, 0) + 1
+        past_boards[board_str] = count
+        if count >= 10:
             is_draw = True
             break
-    save_file_board_move_pair(global_filename % idx, pair_list)
+
+        if step >= 1000:
+            is_draw = True
+            break
+
+    #########
+    # print(f'Max repeated board: {max(past_boards.values())}')
+    if is_draw:
+        draw_str = '_draw'
+    else:
+        draw_str = ''
+    filename = global_filename % (idx, draw_str)
+    save_file_board_move_pair(filename, pair_list)
 
     if is_draw:
         winner_name = draw_name
@@ -72,7 +92,8 @@ def run_game(idx, bot_pair):
         winner_name = bot_black.name
     else:
         winner_name = bot_white.name
-    print(f'step:{step:4d}, winner: {winner_name}')
+    current_time = datetime.now().strftime('%y/%m/%d %H:%M:%S')
+    print(f'({current_time})  step:{step:4d}, winner: {winner_name}')
     return winner_name, step
 
 
@@ -98,10 +119,8 @@ def generate_data(bot1, bot2, run_iter=100, threads=None):
 
 
 if __name__ == '__main__':
-    random.seed(0)
+    bot_A = MCTSBot(name='MCTS20000r0.01t', num_rounds=20000, temperature=0.01)
+    bot_B = MCTSBot(name='MCTS20000r0.01t', num_rounds=20000, temperature=0.01)
 
-    bot_A = MCTSBot(name='MCTS4000r0.0001t', num_rounds=4000, temperature=0.001)
-    bot_B = MCTSBot(name='MCTS4000r0.0001t', num_rounds=4000, temperature=0.001)
-    global_filename = '../generated_games/mcts/game_%d.txt'
-    generate_data(bot_A, bot_B, 100, 3)
+    generate_data(bot_A, bot_B, 1000, 3)
     # visualize_game('../generated_games/game_0.txt', 'vis.txt')
