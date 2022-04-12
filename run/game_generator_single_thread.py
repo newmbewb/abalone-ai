@@ -15,10 +15,11 @@ draw_name = 'Draw'
 # date = datetime.now().strftime('%y%m%d%H%M%S')
 # global_filename = f'../generated_games/mcts/game_MCTS20000r0.01t_{date}_%d-%s.txt'
 global_timer = None
+draw_repeat_count = 30
 
 
 def kill_self():
-    print('Livelock detected.', flush=True)
+    print('Livelock detected.', flush = True)
     exit(1)
 
 
@@ -57,7 +58,7 @@ def run_game(idx, bot_pair):
         board_str = encode_board_str(game.board)
         count = past_boards.get(board_str, 0) + 1
         past_boards[board_str] = count
-        if count >= 10:
+        if count >= draw_repeat_count:
             is_draw = True
             break
 
@@ -99,7 +100,7 @@ if __name__ == '__main__':
         exit(1)
     date = datetime.now().strftime('%y%m%d%H%M%S')
     global_filename = f'../generated_games/mcts/game_MCTS20000r0.01t_{date}_{argv[1]}_%d-%s.txt'
-    print(f'Start {argv[1]} script', flush=True)
+    print(f'Start {argv[1]} script: draw_repeat_count {draw_repeat_count}', flush=True)
     bot_A = MCTSBot(name='MCTS20000r0.01t', num_rounds=20000, temperature=0.01)
     bot_B = MCTSBot(name='MCTS20000r0.01t', num_rounds=20000, temperature=0.01)
 

@@ -122,5 +122,5 @@ if __name__ == '__main__':
     bot_A = MCTSBot(name='MCTS20000r0.01t', num_rounds=20000, temperature=0.01)
     bot_B = MCTSBot(name='MCTS20000r0.01t', num_rounds=20000, temperature=0.01)
 
-    generate_data(bot_A, bot_B, 1000, 3)
-    # visualize_game('../generated_games/game_0.txt', 'vis.txt')
+    generate_data(bot_A, bot_B, 1000, 2)
+    # visualize_game('../generated_games/mcts/game_MCTS20000r0.01t_220411090936_197-.txt', 'vis.txt')

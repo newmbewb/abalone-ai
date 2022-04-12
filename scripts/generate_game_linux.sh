@@ -2,7 +2,10 @@
 
 function run(){
     local name=$1
-    pypy ../run/dataset_generator_single_thread.py $name
+    while :
+    do
+        pypy ../run/game_generator_single_thread.py $name
+    done
 }
 
 core_count=$(grep -c ^processor /proc/cpuinfo)
