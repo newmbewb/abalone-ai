@@ -2,7 +2,7 @@ import random
 
 from dlabalone.ablboard import Board, GameState
 from dlabalone.abltypes import Player
-from dlabalone.tests.test_utils import save_file_move_list, load_file_move_list, is_same_move_set
+from dlabalone.utils import save_file_move_list, load_file_move_list, is_same_move_set
 from dlabalone.utils import print_board
 
 

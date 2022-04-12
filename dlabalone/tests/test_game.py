@@ -6,8 +6,7 @@ from dlabalone.abltypes import Player
 from dlabalone.agent.random_kill_first import RandomKillBot
 from dlabalone.agent.alphabeta import AlphaBetaBot
 from dlabalone.agent.mcts import MCTSBot
-from dlabalone.utils import print_board, encode_board_str
-from dlabalone.tests.test_utils import profiler
+from dlabalone.utils import print_board, encode_board_str, profiler
 import cProfile
 import random
 

@@ -4,8 +4,7 @@ import time
 from dlabalone.ablboard import GameState
 from dlabalone.abltypes import Player
 from dlabalone.agent.mcts import MCTSBot
-from dlabalone.utils import encode_board_str
-from dlabalone.tests.test_utils import save_file_board_move_pair
+from dlabalone.utils import encode_board_str, save_file_state_move_pair
 import threading
 from datetime import datetime
 from sys import argv
@@ -73,7 +72,7 @@ def run_game(idx, bot_pair):
     else:
         draw_str = ''
     filename = global_filename % (idx, draw_str)
-    save_file_board_move_pair(filename, pair_list)
+    save_file_state_move_pair(filename, pair_list)
 
     if is_draw:
         winner_name = draw_name

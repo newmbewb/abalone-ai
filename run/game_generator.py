@@ -5,8 +5,8 @@ from dlabalone.abltypes import Player
 from dlabalone.agent.random_kill_first import RandomKillBot
 from dlabalone.agent.alphabeta import AlphaBetaBot
 from dlabalone.agent.mcts import MCTSBot
-from dlabalone.utils import print_board, encode_board_str
-from dlabalone.tests.test_utils import profiler, save_file_board_move_pair, load_file_board_move_pair
+from dlabalone.utils import print_board, encode_board_str, save_file_state_move_pair, profiler, \
+    load_file_board_move_pair
 import cProfile
 import random
 import sys
@@ -36,7 +36,7 @@ def test1():
     print('====' * 10)
     print(step)
     profiler.print('game')
-    save_file_board_move_pair('test.txt', pair_list)
+    save_file_state_move_pair('test.txt', pair_list)
 
 
 def visualize_game(infile, outfile):
@@ -84,7 +84,7 @@ def run_game(idx, bot_pair):
     else:
         draw_str = ''
     filename = global_filename % (idx, draw_str)
-    save_file_board_move_pair(filename, pair_list)
+    save_file_state_move_pair(filename, pair_list)
 
     if is_draw:
         winner_name = draw_name

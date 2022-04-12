@@ -1,7 +1,7 @@
 from dlabalone.abltypes import Player
 import random
 import copy
-from dlabalone.tests.test_utils import profiler
+from dlabalone.utils import profiler
 from dlabalone.ablboard import Board
 
 

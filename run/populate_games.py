@@ -1,8 +1,7 @@
 from dlabalone.ablboard import Board, Move, GameState
 from dlabalone.abltypes import Direction, add, Player
-from dlabalone.tests.test_utils import load_file_board_move_pair, save_file_board_move_pair2
 import os
-from dlabalone.utils import print_board, encode_board_str
+from dlabalone.utils import print_board, encode_board_str, load_file_board_move_pair, save_file_board_move_pair
 
 
 def rotate_point_one_step(point):
@@ -178,6 +177,6 @@ if __name__ == '__main__':
             pair_list = load_file_board_move_pair(game_name)
             for rotate_count in range(6):
                 rotated_pair_list = rotate_pair_list(pair_list, rotate_count)
-                save_file_board_move_pair2(populated_game_name % idx, rotated_pair_list)
+                save_file_board_move_pair(populated_game_name % idx, rotated_pair_list)
                 validate(populated_game_name % idx)
                 idx += 1
