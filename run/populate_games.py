@@ -163,7 +163,8 @@ def rotate_pair_list(pair_list, count):
 board_size = 5
 Board.set_size(board_size)
 center = (board_size - 1, board_size - 1)
-in_dir_paths = ['../generated_games/mcts/', '../generated_games/mcts/old/']
+# in_dir_paths = ['../generated_games/mcts/', '../generated_games/mcts/old/']
+in_dir_paths = ['../generated_games/mcts/']
 populated_game_name = '../populated_games/game_%d.txt'
 
 if __name__ == '__main__':
@@ -171,12 +172,12 @@ if __name__ == '__main__':
     for in_path in in_dir_paths:
         game_files = [f for f in map(lambda x: os.path.join(in_path, x), os.listdir(in_path)) if os.path.isfile(f)]
         for game_name in game_files:
-            if 'draw' in game_name:
-                continue
+            # if 'draw' in game_name:
+            #     continue
             print(game_name)
             pair_list = load_file_board_move_pair(game_name)
             for rotate_count in range(6):
                 rotated_pair_list = rotate_pair_list(pair_list, rotate_count)
                 save_file_board_move_pair(populated_game_name % idx, rotated_pair_list)
-                validate(populated_game_name % idx)
+                # validate(populated_game_name % idx)
                 idx += 1
