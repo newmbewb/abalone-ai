@@ -168,13 +168,33 @@ class DataGenerator:
             fd_label = self.fd_label[work]
 
 
+class DataGeneratorMock:
+    def __init__(self, encoder, batch, epochs_train=6, epochs_test=2):
+        self.encoder = encoder
+        self.batch = batch
+        self.epochs = {'train': epochs_train, 'test': epochs_test}
+
+    def get_num_steps(self, work):
+        assert work in ['train', 'test'], f'Invalid work type {work}'
+        return self.epochs[work]
+
+    def generate(self, work):
+        assert work in ['train', 'test'], f'Invalid work type {work}'
+        while True:
+            feature = np.random.rand(*((self.batch, ) + self.encoder.shape()))
+            label = np.random.rand(*(self.batch, self.encoder.num_moves()))
+            yield feature, label
+
+
 if __name__ == '__main__':
     # Test code
     multiprocessing.freeze_support()
-    generator = DataGenerator(TwoPlaneEncoder(5), 256, '../dataset', '../encoded_data', 0.5)
+    generator = DataGenerator(TwoPlaneEncoder(5), 256, '../../dataset', '../encoded_data', 0.5)
+    generator = DataGeneratorMock(TwoPlaneEncoder(5), 256)
     i = 0
     for feature, label in generator.generate('train'):
-        print(label)
+        print(feature.shape)
+        print(label.shape)
         i += 1
         if i > 10:
             break
