@@ -16,16 +16,19 @@ draw_name = 'Draw'
 
 def test1():
     game = GameState.new_game(5)
-    bot = RandomKillBot()
+    # bot = RandomKillBot()
     # bot = AlphaBetaBot(depth=3, width=100)
     # bot = MCTSBot(name='MCTS', num_rounds=1000, temperature=0.1)
+    bot = MCTSBot(name='MCTS20000r0.01t', num_rounds=20000, temperature=0.01)
     step = 0
     profiler.start('game')
     while not game.is_over():
         game = game.apply_move(bot.select_move(game))
         step += 1
-        if step % 1 == 0:
-            print(f'{step}')
+        if step == 20:
+            break
+        # if step % 1 == 0:
+        #     print(f'{step}')
         #     print(f"{'----' * 5} {step} steps {'----' * 5}")
         #     print_board(game.board)
     profiler.end('game')
@@ -92,7 +95,7 @@ def compare_bot(bot1, bot2, run_iter=100, threads=None):
 
 
 if __name__ == '__main__':
-    # random.seed(3)
+    random.seed(0)
     enable_profile = False
     print(f"Profile: {str(enable_profile)}")
     pr = None
@@ -101,18 +104,18 @@ if __name__ == '__main__':
         pr.enable()
 
     ####################################
-    # profiler.start('game')
-    #
-    # if True:
-    # # if False:
-    #     test1()
-    # else:
-    #     bot_A = AlphaBetaBot(name='AB3d', depth=3)
-    #     bot_B = MCTSBot(name='MCTS4000r0.0001t', num_rounds=4000, temperature=0.001)
-    #     compare_bot(bot_A, bot_B, run_iter=10, threads=3)
-    #
-    # profiler.end('game')
-    # profiler.print('game')
+    profiler.start('game')
+
+    if True:
+    # if False:
+        test1()
+    else:
+        bot_A = AlphaBetaBot(name='AB3d', depth=3)
+        bot_B = MCTSBot(name='MCTS4000r0.0001t', num_rounds=4000, temperature=0.001)
+        compare_bot(bot_A, bot_B, run_iter=10, threads=3)
+
+    profiler.end('game')
+    profiler.print('game')
     # ####################################
     # profiler.start('game')
     #
@@ -132,14 +135,14 @@ if __name__ == '__main__':
     # profiler.end('game')
     # profiler.print('game')
     ####################################
-    profiler.start('game')
-
-    bot_A = MCTSBot(name='MCTS20000r0.01t',  num_rounds=20000, temperature=0.01)
-    bot_B = MCTSBot(name='MCTS40000r0.01t',  num_rounds=40000, temperature=0.01)
-    compare_bot(bot_A, bot_B, run_iter=10, threads=3)
-
-    profiler.end('game')
-    profiler.print('game')
+    # profiler.start('game')
+    #
+    # bot_A = MCTSBot(name='MCTS20000r0.01t',  num_rounds=20000, temperature=0.01)
+    # bot_B = MCTSBot(name='MCTS40000r0.01t',  num_rounds=40000, temperature=0.01)
+    # compare_bot(bot_A, bot_B, run_iter=10, threads=3)
+    #
+    # profiler.end('game')
+    # profiler.print('game')
     ####################################
 
     if enable_profile:

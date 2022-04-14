@@ -21,13 +21,7 @@ class MCTSNode(object):
         }
         self.num_rollouts = 0
         self.children = []
-        if game_state.is_over():
-            self.unvisited_moves = []
-        else:
-            moves_kill, moves_other = game_state.legal_moves(separate_kill=True)
-            random.shuffle(moves_kill)
-            random.shuffle(moves_other)
-            self.unvisited_moves = moves_kill + moves_other
+        self.unvisited_moves = None
 
     def add_random_child(self):
         # Select better move first
@@ -43,6 +37,14 @@ class MCTSNode(object):
         self.num_rollouts += 1
 
     def can_add_child(self):
+        if self.unvisited_moves is None:
+            if self.game_state.is_over():
+                self.unvisited_moves = []
+            else:
+                moves_kill, moves_other = self.game_state.legal_moves(separate_kill=True)
+                random.shuffle(moves_kill)
+                random.shuffle(moves_other)
+                self.unvisited_moves = moves_kill + moves_other
         return len(self.unvisited_moves) > 0
 
     def is_terminal(self):
