@@ -1,31 +1,38 @@
-from dlabalone.data.data_processor import DataGenerator
+from keras.callbacks import ModelCheckpoint
+
+from dlabalone.data.data_processor import DataGenerator, DataGeneratorMock
 from dlabalone.encoders.twoplane import TwoPlaneEncoder
 from dlabalone.networks import simple1
 from keras.models import Sequential
 from keras.layers.core import Dense
 import os
+import tensorflow as tf
 
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-# out_filename_format = ''
-# convert_dataset_to_npy(encoder=, batch=, in_dir=, out_filename_format=out_filename_format, test_ratio=, overwrite=False)
-# generator = DataGenerator(out_filename_format) # If you want to change batch, you have to re-convert data
-#
-# ## when call fit_generator
-# generator = generator.generator('train')
-# steps_per_epoch=generator.get_num_steps('train')
-# validation_data=generator.generator('test')
-# validation_steps=generator.get_num_steps('test')
+if __name__ == '__main__':
+    encoder = TwoPlaneEncoder(5)
+    generator = DataGenerator(encoder, 256, '../../dataset', '../../encoded_data', 0.2)
+    # generator = DataGeneratorMock(encoder, 8192, 100, 25)
+    # dataset = tf.data.Dataset.from_generator(lambda: generator.generate('train'), (tf.int8, tf.int8),
+    #                                          (encoder.shape(), (encoder.num_moves(), )))
+    # dataset = dataset.batch(256)
 
-encoder = TwoPlaneEncoder(5)
-generator = DataGenerator(encoder, 256, '../../dataset', '../../encoded_data', 0.5)
+    model_generator = simple1.Simple1()
+    model = model_generator.model(encoder.shape(), encoder.num_moves())
 
-network_layers = simple1.layers(encoder.shape())
-model = Sequential()
-num_classes = encoder.num_moves()
-for layer in network_layers:
-    model.add(layer)
-model.add(Dense(num_classes, activation='softmax'))
-model.summary()
-model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    # Make network name
+    network_name = f'{model_generator.name()}_{encoder.name()}'
+    print(network_name)
+    epochs = 1
+    model.fit_generator(
+        generator=generator.generate('train'),
+        epochs=epochs,
+        steps_per_epoch=generator.get_num_steps('train'),
+        validation_data=generator.generate('test'),
+        validation_steps=generator.get_num_steps('test'),
+        callbacks=[
+            ModelCheckpoint('../checkpoints/simple1_twoplane_epoch_{epoch}.h5')
+        ]
+    )

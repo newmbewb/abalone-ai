@@ -10,7 +10,7 @@ from tensorflow.keras.utils import to_categorical
 import numpy as np
 
 
-def encode_data_worker(encoder, q_infile, q_out):
+def encode_data_worker(encoder, q_infile, q_out, q_end):
     num_classes = encoder.num_moves()
     while True:
         try:
@@ -28,25 +28,28 @@ def encode_data_worker(encoder, q_infile, q_out):
             label = np.expand_dims(label, axis=0)
 
             q_out.put((feature, label))
+    q_end.put(True)
 
 
 def _convert_dataset_to_npy(encoder, batch, file_list, out_filename_feature, out_filename_label):
+    thread_count = os.cpu_count() - 1
+
     # Put file names & Start threads to encode data
     q_infile = multiprocessing.Queue()
-    q_data = multiprocessing.Queue()
+    q_data = multiprocessing.Queue(maxsize=thread_count*64)
+    q_end = multiprocessing.Queue()
 
     for file in file_list:
         q_infile.put_nowait(file)
 
-    thread_count = os.cpu_count() - 1
     thread_list = []
     for _ in range(thread_count):
-        p = multiprocessing.Process(target=encode_data_worker, args=(encoder, q_infile, q_data))
+        p = multiprocessing.Process(target=encode_data_worker, args=(encoder, q_infile, q_data, q_end))
         p.start()
         thread_list.append(p)
 
     # Get encoded data and do work
-    all_thread_end = False
+    end_count = 0
     buffer_feature = []
     buffer_label = []
     fd_feature = open(out_filename_feature, 'wb')
@@ -54,13 +57,11 @@ def _convert_dataset_to_npy(encoder, batch, file_list, out_filename_feature, out
     fd_feature.write(struct.pack('<L', 0))
     fd_label.write(struct.pack('<L', 0))
     epochs_count = 0
-    while not all_thread_end:
+    while end_count < thread_count:
         # If all encoder worker finished, exit this loop after processing remain things
-        all_thread_end = True
-        for p in thread_list:
-            if p.is_alive():
-                all_thread_end = False
-                break
+        while not q_end.empty():
+            end_count += 1
+            q_end.get()
 
         while not q_data.empty():
             # Do work:
@@ -125,12 +126,13 @@ def convert_dataset_to_npy(encoder, batch, in_dir, out_filename_format, test_rat
 
 class DataGenerator:
     def __init__(self, encoder, batch, dataset_dir, out_dir, test_ratio, out_filename_format=None, overwrite=False):
+        multiprocessing.freeze_support()
         if out_filename_format is None:
             out_filename_format = f'{encoder.name()}_{batch}batch_{test_ratio}test_%s_%s.npy'
         out_filename_format = os.path.join(out_dir, out_filename_format)
         convert_dataset_to_npy(encoder, batch, dataset_dir, out_filename_format, test_ratio, overwrite)
         self.out_filename_format = out_filename_format
-        self.epochs_count = {}
+        self.step_count = {}
         self.fd_feature = {}
         self.fd_label = {}
         self._reset_file('train')
@@ -147,11 +149,11 @@ class DataGenerator:
         epochs_count_feature = struct.unpack('<L', self.fd_feature[work].read(struct.calcsize('<L')))[0]
         epochs_count_label = struct.unpack('<L', self.fd_label[work].read(struct.calcsize('<L')))[0]
         assert epochs_count_feature == epochs_count_label, 'Feature and label size are different'
-        self.epochs_count[work] = epochs_count_feature
+        self.step_count[work] = epochs_count_feature
 
     def get_num_steps(self, work):
         assert work in ['train', 'test'], f'Invalid work type {work}'
-        return self.epochs_count[work]
+        return self.step_count[work]
 
     def generate(self, work):
         assert work in ['train', 'test'], f'Invalid work type {work}'
@@ -169,21 +171,23 @@ class DataGenerator:
 
 
 class DataGeneratorMock:
-    def __init__(self, encoder, batch, epochs_train=6, epochs_test=2):
+    def __init__(self, encoder, batch, steps_train=6, steps_test=2):
         self.encoder = encoder
         self.batch = batch
-        self.epochs = {'train': epochs_train, 'test': epochs_test}
+        self.steps = {'train': steps_train, 'test': steps_test}
+        self.feature = np.random.rand(*((self.batch,) + self.encoder.shape()))
+        self.label = np.random.rand(*(self.batch, self.encoder.num_moves()))
 
     def get_num_steps(self, work):
         assert work in ['train', 'test'], f'Invalid work type {work}'
-        return self.epochs[work]
+        return self.steps[work]
 
     def generate(self, work):
         assert work in ['train', 'test'], f'Invalid work type {work}'
         while True:
-            feature = np.random.rand(*((self.batch, ) + self.encoder.shape()))
-            label = np.random.rand(*(self.batch, self.encoder.num_moves()))
-            yield feature, label
+            # feature = np.random.rand(*((self.batch, ) + self.encoder.shape()))
+            # label = np.random.rand(*(self.batch, self.encoder.num_moves()))
+            yield self.feature, self.label
 
 
 if __name__ == '__main__':
