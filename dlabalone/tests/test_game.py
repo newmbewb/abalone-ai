@@ -111,8 +111,8 @@ if __name__ == '__main__':
         test1()
     else:
         bot_A = AlphaBetaBot(name='AB3d', depth=3)
-        bot_B = MCTSBot(name='MCTS4000r0.0001t', num_rounds=4000, temperature=0.001)
-        compare_bot(bot_A, bot_B, run_iter=10, threads=3)
+        bot_B = MCTSBot(name='MCTS20000r0.01t', num_rounds=4000, temperature=0.001)
+        compare_bot(bot_A, bot_B, run_iter=10, threads=4)
 
     profiler.end('game')
     profiler.print('game')

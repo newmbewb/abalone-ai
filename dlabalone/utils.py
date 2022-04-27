@@ -47,7 +47,7 @@ def encode_board_str(board, next_player=Player.black):
     return ''.join(map(lambda c: ''.join(c), board_char))
 
 
-def encode_state_to_str(state, max_xy):
+def encode_state_to_str(state):
     return encode_board_str(state.board, state.next_player)
 
 
@@ -97,9 +97,8 @@ def save_file_state_move_pair(filename, pair_list):
     fd = open(filename, 'w')
     # Save metadata
     fd.write(f'{pair_list[0][0].board.size},{len(pair_list)}\n')
-    max_xy = pair_list[0][0].board.max_xy
     for state, move in pair_list:
-        fd.write(f'{encode_state_to_str(state, max_xy)}{board_move_seperator}{str(move)}\n')
+        fd.write(f'{encode_state_to_str(state)}{board_move_seperator}{str(move)}\n')
     fd.close()
 
 

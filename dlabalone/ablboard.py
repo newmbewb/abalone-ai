@@ -187,30 +187,36 @@ class GameState(object):
         return GameState(next_board, self.next_player.other)
 
     @classmethod
-    def new_game(cls, board_size):
+    def new_game(cls, board_size, reverse=False):
         Board.set_size(board_size)
         board = Board()
+        if reverse:
+            player_up = Player.white
+            player_down = Player.black
+        else:
+            player_up = Player.black
+            player_down = Player.white
         # Black
         for x in range(0, 4 + 1):
             point = x, 0
-            board.grid[point] = Player.black
+            board.grid[point] = player_up
         for x in range(0, 5 + 1):
             point = x, 1
-            board.grid[point] = Player.black
+            board.grid[point] = player_up
         for x in range(2, 4 + 1):
             point = x, 2
-            board.grid[point] = Player.black
+            board.grid[point] = player_up
 
         # White
         for x in range(4, 6 + 1):
             point = x, 6
-            board.grid[point] = Player.white
+            board.grid[point] = player_down
         for x in range(3, 8 + 1):
             point = x, 7
-            board.grid[point] = Player.white
+            board.grid[point] = player_down
         for x in range(4, 8 + 1):
             point = x, 8
-            board.grid[point] = Player.white
+            board.grid[point] = player_down
 
         return GameState(board, Player.black)
 
@@ -274,7 +280,7 @@ class GameState(object):
             return Player.black
         return None
 
-    def win_probability(self, player):
+    def win_probability_naive(self, player):
         black_remain = 6 - self.board.dead_stones_black
         white_remain = 6 - self.board.dead_stones_white
         if player == Player.white:

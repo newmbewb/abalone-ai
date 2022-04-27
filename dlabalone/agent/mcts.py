@@ -55,7 +55,7 @@ class MCTSNode(object):
 
 
 class MCTSBot(Agent):
-    def __init__(self, name=None, num_rounds=10, temperature=1.5):
+    def __init__(self, name=None, num_rounds=10, temperature=1.5, version='1.1'):
         super().__init__(name)
         self.num_rounds = num_rounds
         self.temperature = temperature
@@ -119,7 +119,7 @@ class MCTSBot(Agent):
 
     @staticmethod
     def simulate_random_game(game):
-        return game.win_probability(Player.black)
+        return game.win_probability_naive(Player.black)
         # bot = RandomKillBot()
         # for _ in range(50):
         #     if game.is_over():

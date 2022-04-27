@@ -94,6 +94,9 @@ def _convert_dataset_to_npy(encoder, batch, file_list, out_filename_feature, out
     fd_feature.close()
     fd_label.close()
 
+    for p in thread_list:
+        p.join()
+
 
 def convert_dataset_to_npy(encoder, batch, in_dir, out_filename_format, test_ratio, overwrite=False):
     # Count file
@@ -193,7 +196,7 @@ class DataGeneratorMock:
 if __name__ == '__main__':
     # Test code
     multiprocessing.freeze_support()
-    generator = DataGenerator(TwoPlaneEncoder(5), 256, '../../dataset', '../encoded_data', 0.5)
+    generator = DataGenerator(TwoPlaneEncoder(5), 256, '../../dataset', '../../encoded_data', 0.5)
     generator = DataGeneratorMock(TwoPlaneEncoder(5), 256)
     i = 0
     for feature, label in generator.generate('train'):
