@@ -7,8 +7,9 @@
       <excludeFolder url="file://$MODULE_DIR$/venv_python" />
       <excludeFolder url="file://$MODULE_DIR$/venv_pypy" />
       <excludeFolder url="file://$MODULE_DIR$/venv" />
+      <excludeFolder url="file://$MODULE_DIR$/venv39" />
     </content>
-    <orderEntry type="jdk" jdkName="PyPy 3.11 (abalone) (2)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.10 (abalone)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>

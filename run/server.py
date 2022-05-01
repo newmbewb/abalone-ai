@@ -1,7 +1,8 @@
 import asyncio
 import time
 from datetime import datetime
-
+import pathlib
+import ssl
 import websockets
 from sys import executable
 import os
@@ -38,12 +39,13 @@ async def accept(websocket, path):
         bot = None
 
     data = await websocket.recv()
-    if data == 'black:start':
-        print(f'{str(datetime.now())}: new game (black)')
+    win_msg = None
+    if 'black:start' in data:
+        print(f'{str(datetime.now())}: new game (black); ' + data, flush=True)
         game = GameState.new_game(board_size, reverse=True)
         await websocket.send('true:'+encode_board_str(game.board, Player.black))
-    elif data == 'white:start':
-        print(f'{str(datetime.now())}: new game (white)')
+    elif 'white:start' in data:
+        print(f'{str(datetime.now())}: new game (white); ' + data, flush=True)
         game = GameState.new_game(board_size)
         await websocket.send('false:'+encode_board_str(game.board, Player.black))
         t = time.time()
@@ -51,7 +53,7 @@ async def accept(websocket, path):
         await asyncio.sleep(update_delay - (time.time() - t))
         await websocket.send('true:'+encode_board_str(game.board, Player.black))
     else:
-        player, board, selected, direction = data.split(':')
+        tag, player, board, selected, direction = data.split(':')
 
         # Decode board
         board = decode_board_from_str(board, max_xy)
@@ -69,22 +71,26 @@ async def accept(websocket, path):
         winner = game.winner()
         if winner:
             if winner == Player.black:
+                win_msg = f"{tag}:win:black"
                 await websocket.send('false:black_win')
             else:
+                win_msg = f"{tag}:win:white"
                 await websocket.send('false:white_win')
-            return
-        t = time.time()
-        game = game.apply_move(bot.select_move(game))
-        winner = game.winner()
-        await asyncio.sleep(update_delay - (time.time() - t))
-        if winner:
-            if winner == Player.black:
-                await websocket.send('false:black_win')
-            else:
-                await websocket.send('false:white_win')
-            return
         else:
-            await websocket.send('true:' + encode_board_str(game.board, Player.black))
+            t = time.time()
+            game = game.apply_move(bot.select_move(game))
+            winner = game.winner()
+            await asyncio.sleep(update_delay - (time.time() - t))
+            if winner:
+                if winner == Player.black:
+                    await websocket.send('false:black_win')
+                else:
+                    await websocket.send('false:white_win')
+            else:
+                await websocket.send('true:' + encode_board_str(game.board, Player.black))
+    print(data, flush=True)
+    if win_msg:
+        print(win_msg)
 
 
 def main():

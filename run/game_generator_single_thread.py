@@ -98,7 +98,7 @@ if __name__ == '__main__':
         print(f'Usage: {argv[0]} <name>')
         exit(1)
     date = datetime.now().strftime('%y%m%d%H%M%S')
-    global_filename = f'../generated_games/mcts/game_MCTS20000r0.01t_{date}_{argv[1]}_%d-%s.txt'
+    global_filename = f'../data/generated_games/mcts/game_MCTS20000r0.01t_{date}_{argv[1]}_%d-%s.txt'
     print(f'Start {argv[1]} script: draw_repeat_count {draw_repeat_count}', flush=True)
     bot_A = MCTSBot(name='MCTS20000r0.01t', num_rounds=20000, temperature=0.01)
     bot_B = MCTSBot(name='MCTS20000r0.01t', num_rounds=20000, temperature=0.01)

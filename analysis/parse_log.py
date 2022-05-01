@@ -1,7 +1,7 @@
 import re
 
 if __name__ == '__main__':
-    logname = 'log/simple1_dropout0.txt'
+    logname = 'log/simple1_threeplane_adam_dropout0.1.txt'
 
     p = re.compile(r'.*loss: (?P<loss>[0-9\.]+) - accuracy: (?P<accuracy>[0-9\.]+) - val_loss: (?P<val_loss>[0-9\.]+) - val_accuracy: (?P<val_accuracy>[0-9\.]+)')
     fd = open(logname, 'r')

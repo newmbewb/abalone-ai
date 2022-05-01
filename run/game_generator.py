@@ -15,7 +15,7 @@ from datetime import datetime
 
 draw_name = 'Draw'
 date = datetime.now().strftime('%y%m%d%H%M%S')
-global_filename = f'../generated_games/mcts/game_MCTS20000r0.01t_{date}_%d-%s.txt'
+global_filename = f'../data/generated_games/mcts/game_MCTS20000r0.01t_{date}_%d-%s.txt'
 
 
 def test1():
