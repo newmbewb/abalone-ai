@@ -5,7 +5,7 @@ from dlabalone.abltypes import Player
 from dlabalone.encoders.base import Encoder
 
 
-class ThreePlaneEncoder(Encoder):
+class FourPlaneEncoder(Encoder):
     def __init__(self, board_size):
         super().__init__(board_size)
         self.num_planes = 4
@@ -35,4 +35,4 @@ class ThreePlaneEncoder(Encoder):
 
 
 def create(board_size):
-    return ThreePlaneEncoder(board_size)
+    return FourPlaneEncoder(board_size)

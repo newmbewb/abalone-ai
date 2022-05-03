@@ -113,6 +113,12 @@ def convert_dataset_to_npz(encoder, batch, in_dir, out_filename_format, test_rat
         print('npz already exists. Skipping converting')
 
 
+def npz_preloader(q_infile, q_data):
+    while True:
+        loaded = np.load(q_infile.get())
+        q_data.put((loaded['feature'], loaded['label']))
+
+
 class DataGenerator:
     def __init__(self, encoder, batch, dataset_dir, out_dir, test_ratio, out_filename_format=None, overwrite=False):
         multiprocessing.freeze_support()
@@ -126,23 +132,6 @@ class DataGenerator:
         dirname = os.path.dirname(out_filename_format)
         self.npz_files = {'test': glob.glob(dirname + '/test_*.npz'), 'train': glob.glob(dirname + '/train_*.npz')}
         self.step_count = {'test': len(self.npz_files['test']), 'train': len(self.npz_files['train'])}
-        # self.fd_feature = {}
-        # self.fd_label = {}
-        # self._reset_file('train')
-        # self._reset_file('test')
-
-    # def _reset_file(self, work):
-    #     if work in self.fd_feature:
-    #         self.fd_feature[work].close()
-    #     if work in self.fd_label:
-    #         self.fd_label[work].close()
-    #     self.fd_feature[work] = open(self.out_filename_format % (work, 'feature'), 'rb')
-    #     self.fd_label[work] = open(self.out_filename_format % (work, 'label'), 'rb')
-    #
-    #     epochs_count_feature = struct.unpack('<L', self.fd_feature[work].read(struct.calcsize('<L')))[0]
-    #     epochs_count_label = struct.unpack('<L', self.fd_label[work].read(struct.calcsize('<L')))[0]
-    #     assert epochs_count_feature == epochs_count_label, 'Feature and label size are different'
-    #     self.step_count[work] = epochs_count_feature
 
     def get_num_steps(self, work):
         assert work in ['train', 'test'], f'Invalid work type {work}'
@@ -150,10 +139,29 @@ class DataGenerator:
 
     def generate(self, work):
         assert work in ['train', 'test'], f'Invalid work type {work}'
-        while True:
-            for file in self.npz_files[work]:
-                loaded = np.load(file)
-                yield loaded['feature'], loaded['label']
+        thread_count = 4
+        q_infile = multiprocessing.Queue(maxsize=len(self.npz_files[work]) * 8)
+        q_data = multiprocessing.Queue(maxsize=thread_count)
+        thread_list = []
+        for _ in range(thread_count):
+            p = multiprocessing.Process(target=npz_preloader, args=(q_infile, q_data))
+            p.daemon = False
+            p.start()
+            thread_list.append(p)
+        try:
+            while True:
+                for file in self.npz_files[work]:
+                    loaded = np.load(file)
+                    yield loaded['feature'], loaded['label']
+                for file in self.npz_files[work]:
+                    q_infile.put(file)
+                for _ in range(len(self.npz_files[work])):
+                    feature, label = q_data.get()
+                    yield feature, label
+        except GeneratorExit:
+            for p in thread_list:
+                p.terminate()
+                p.join()
 
 
 class DataGeneratorMock:

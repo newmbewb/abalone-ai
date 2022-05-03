@@ -3,7 +3,7 @@ import multiprocessing
 from keras.callbacks import ModelCheckpoint
 from tensorflow.keras.optimizers import SGD
 
-from dlabalone.data.data_processor import DataGenerator, DataGeneratorMock
+from dlabalone.data.data_processor_plain import DataGenerator, DataGeneratorMock
 from dlabalone.encoders.twoplane import TwoPlaneEncoder
 from dlabalone.encoders.threeplane import ThreePlaneEncoder
 from dlabalone.encoders.base import get_encoder_by_name

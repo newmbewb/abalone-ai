@@ -149,13 +149,17 @@ class GamePopulator:
                 print('='*20)
                 print_board(rotate_board_final)
 
-    def rotate_pair_list(self, pair_list, count):
+    def rotate_pair_list(self, pair_list, count, with_value):
         ret = []
-        for board, move in pair_list:
-            ret.append((self.rotate_board(board, count), self.rotate_move(move, count)))
+        if with_value:
+            for board, move, advantage, value in pair_list:
+                ret.append((self.rotate_board(board, count), self.rotate_move(move, count), advantage, value))
+        else:
+            for board, move in pair_list:
+                ret.append((self.rotate_board(board, count), self.rotate_move(move, count)))
         return ret
 
-    def populate_games(self, in_dir_paths, populated_game_name):
+    def populate_games(self, in_dir_paths, populated_game_name, with_value=False):
         idx = 0
         for in_path in in_dir_paths:
             game_files = [f for f in map(lambda x: os.path.join(in_path, x), os.listdir(in_path)) if os.path.isfile(f)]
@@ -167,9 +171,9 @@ class GamePopulator:
                     print(f'{file_count}/{len(game_files)} Done..')
                 # if 'draw' in game_name:
                 #     continue
-                pair_list = load_file_board_move_pair(game_name)
+                pair_list = load_file_board_move_pair(game_name, with_value)
                 for rotate_count in range(6):
-                    rotated_pair_list = self.rotate_pair_list(pair_list, rotate_count)
-                    save_file_board_move_pair(populated_game_name % idx, rotated_pair_list)
+                    rotated_pair_list = self.rotate_pair_list(pair_list, rotate_count, with_value)
+                    save_file_board_move_pair(populated_game_name % idx, rotated_pair_list, with_value)
                     # validate(populated_game_name % idx)
                     idx += 1

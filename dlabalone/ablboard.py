@@ -8,6 +8,18 @@ class Board(object):
     valid_grids = []
 
     @classmethod
+    def distance_from_center(cls, point):
+        center = (cls.size - 1, cls.size - 1)
+        if point == center:
+            return 0
+        x, y = point
+        x_center, y_center = center
+        if x <= x_center and y <= y_center or x >= x_center and y >= y_center:
+            return max(abs(x - x_center), abs(y - y_center))
+        else:
+            return abs(x - x_center) + abs(y - y_center)
+
+    @classmethod
     def set_size(cls, size):
         cls.size = size
         cls.max_xy = size * 2 - 1
@@ -225,7 +237,7 @@ class GameState(object):
             return True
         return False
 
-    def legal_moves(self, separate_kill=False):
+    def legal_moves(self, separate_kill=False, return_push=False):
         ret_kill = []
         ret_normal = []
         for x, y in type(self.board).valid_grids:

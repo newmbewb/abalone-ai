@@ -102,17 +102,22 @@ def save_file_state_move_pair(filename, pair_list):
     fd.close()
 
 
-def save_file_board_move_pair(filename, pair_list):
+def save_file_board_move_pair(filename, pair_list, with_value=False):
     fd = open(filename, 'w')
     # Save metadata
     fd.write(f'{pair_list[0][0].size},{len(pair_list)}\n')
     max_xy = pair_list[0][0].max_xy
-    for board, move in pair_list:
-        fd.write(f'{encode_board_str(board)}{board_move_seperator}{str(move)}\n')
+    if with_value:
+        for board, move, advantage, value in pair_list:
+            fd.write(f'{encode_board_str(board)}{board_move_seperator}{str(move)}' +
+                     f'{board_move_seperator}{advantage}{board_move_seperator}{value}\n')
+    else:
+        for board, move in pair_list:
+            fd.write(f'{encode_board_str(board)}{board_move_seperator}{str(move)}\n')
     fd.close()
 
 
-def load_file_board_move_pair(filename):
+def load_file_board_move_pair(filename, with_value=False):
     fd = open(filename, 'r')
     size, length = fd.readline().split(',')
     Board.set_size(int(size))
@@ -120,8 +125,13 @@ def load_file_board_move_pair(filename):
     pair_list = []
     next_player = Player.black
     for line in fd:
-        board_str, move_str = line.split(board_move_seperator)
-        pair_list.append((decode_board_from_str(board_str, max_xy, next_player), Move.str_to_move(move_str)))
+        if with_value:
+            board_str, move_str, advantage, value = line.strip().split(board_move_seperator)
+            pair_list.append((decode_board_from_str(board_str, max_xy, next_player), Move.str_to_move(move_str),
+                              advantage, value))
+        else:
+            board_str, move_str = line.strip().split(board_move_seperator)
+            pair_list.append((decode_board_from_str(board_str, max_xy, next_player), Move.str_to_move(move_str)))
         next_player = next_player.other
     fd.close()
     return pair_list
