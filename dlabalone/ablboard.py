@@ -138,10 +138,12 @@ class GameState(object):
 
         return self._can_move(stones, string_direction, direction)
 
-    def _can_move(self, stones, string_direction, direction, kill=None):
+    def _can_move(self, stones, string_direction, direction, kill=None, push=None):
         string_len = len(stones)
         if kill is None:
             kill = [False]
+        if push is None:
+            push = [False]
         kill[0] = False
         if string_len > 1 and (direction == string_direction or direction == mul(string_direction, -1)):
             cursor = stones[0]
@@ -163,6 +165,7 @@ class GameState(object):
                     return False
                 elif self.board.grid[cursor] == owner.other:
                     opp_len += 1
+                    push[0] = True
                     if opp_len >= string_len:
                         return False
                 else:
@@ -237,9 +240,11 @@ class GameState(object):
             return True
         return False
 
-    def legal_moves(self, separate_kill=False, return_push=False):
+    def legal_moves(self, separate_kill=False, push_moves=None):
         ret_kill = []
         ret_normal = []
+        if push_moves is None:
+            push_moves = []
         for x, y in type(self.board).valid_grids:
             point = (x, y)
             player = self.board.grid.get(point, None)
@@ -274,12 +279,15 @@ class GameState(object):
                     for move_direction in Direction:
                         move_direction = move_direction.value
                         kill = [False]
-                        valid = self._can_move(stones, string_direction, move_direction, kill)
+                        push = [False]
+                        valid = self._can_move(stones, string_direction, move_direction, kill, push)
                         if valid:
                             if kill[0]:
                                 ret_kill.append(Move(stones, move_direction))
                             else:
                                 ret_normal.append(Move(stones, move_direction))
+                            if push[0]:
+                                push_moves.append(Move(stones, move_direction))
         if separate_kill:
             return ret_kill, ret_normal
         else:
