@@ -1,11 +1,16 @@
 import importlib
+import queue
+import numpy as np
 from dlabalone.ablboard import Board, Move
 from dlabalone.abltypes import Direction, add
+from tensorflow.keras.utils import to_categorical
 
 __all__ = [
     'Encoder',
     'get_encoder_by_name',
 ]
+
+from dlabalone.utils import load_file_board_move_pair
 
 
 class Encoder:
@@ -74,11 +79,65 @@ class Encoder:
     def num_moves(self):
         return len(self.move_list)
 
+    @staticmethod
+    def encode_data_worker(encoder, batch_size, filename, q_infile, q_ggodari, index, lock):
+        num_classes = encoder.num_moves()
+        feature_list = []
+        label_list = []
+        while True:
+            try:
+                file = q_infile.get_nowait()
+            except queue.Empty:
+                break
+            pair_list = load_file_board_move_pair(file)
+            print(f'Encoding {file}')
+            for board, move in pair_list:
+                label = encoder.encode_move(move)
+                label = to_categorical(label, num_classes)
+                feature = encoder.encode_board(board)
+
+                feature = np.expand_dims(feature, axis=0)
+                label = np.expand_dims(label, axis=0)
+                feature_list.append(feature)
+                label_list.append(label)
+                if len(feature_list) == batch_size:
+                    features = np.concatenate(feature_list, axis=0)
+                    labels = np.concatenate(label_list, axis=0)
+                    feature_list = []
+                    label_list = []
+                    with lock:
+                        idx = index.value
+                        index.value += 1
+                    np.savez_compressed(filename % idx, feature=features, label=labels)
+
+        q_ggodari.put((feature_list, label_list))
+        return
+
+    @staticmethod
+    def ggodari_merger(ggodari_list, batch_size, out_filename, index):
+        feature_list = []
+        label_list = []
+        for feature, label in ggodari_list:
+            feature_list += feature
+            label_list += label
+
+        while len(feature_list) > 0:
+            features = np.concatenate(feature_list[:batch_size], axis=0)
+            labels = np.concatenate(label_list[:batch_size], axis=0)
+            feature_list = feature_list[batch_size:]
+            label_list = label_list[batch_size:]
+            np.savez_compressed(out_filename % index, feature=features, label=labels)
+            index += 1
+
+    def load(self, file):
+        loaded = np.load(file)
+        return loaded['feature'], loaded['label']
+
     def shape(self):
         raise NotImplementedError()
 
 
-def get_encoder_by_name(name, board_size):
+def get_encoder_by_name(name, board_size, *args):
     module = importlib.import_module('dlabalone.encoders.' + name)
     constructor = getattr(module, 'create')
-    return constructor(board_size)
+    return constructor(board_size, *args)

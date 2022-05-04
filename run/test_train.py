@@ -18,8 +18,12 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 if __name__ == '__main__':
     multiprocessing.freeze_support()
-    encoder = get_encoder_by_name('alpha_abalone', 5)
-    generator = DataGenerator(encoder, 4096, '../data/dataset', '../data/encoded_data', 0.2)
+    encoder = get_encoder_by_name('alpha_abalone', 5, "policy")
+    generator = DataGenerator(encoder, 4096, '../data/data_with_value/dataset', '../data/encoded_data', 0.2)
+    # encoder = get_encoder_by_name('fourplane', 5)
+    # generator = DataGenerator(encoder, 4096, '../data/dataset', '../data/encoded_data', 0.2)
+
+
     # generator = DataGeneratorMock(encoder, 8192, 100, 25)
     # dataset = tf.data.Dataset.from_generator(lambda: generator.generate('train'), (tf.int8, tf.int8),
     #                                          (encoder.shape(), (encoder.num_moves(), )))

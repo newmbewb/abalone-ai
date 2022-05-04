@@ -11,40 +11,6 @@ from tensorflow.keras.utils import to_categorical
 import numpy as np
 
 
-def encode_data_worker(encoder, batch_size, filename, q_infile, q_ggodari, index, lock):
-    num_classes = encoder.num_moves()
-    feature_list = []
-    label_list = []
-    while True:
-        try:
-            file = q_infile.get_nowait()
-        except queue.Empty:
-            break
-        pair_list = load_file_board_move_pair(file)
-        print(f'Encoding {file}')
-        for board, move in pair_list:
-            label = encoder.encode_move(move)
-            label = to_categorical(label, num_classes)
-            feature = encoder.encode_board(board)
-
-            feature = np.expand_dims(feature, axis=0)
-            label = np.expand_dims(label, axis=0)
-            feature_list.append(feature)
-            label_list.append(label)
-            if len(feature_list) == batch_size:
-                features = np.concatenate(feature_list, axis=0)
-                labels = np.concatenate(label_list, axis=0)
-                feature_list = []
-                label_list = []
-                with lock:
-                    idx = index.value
-                    index.value += 1
-                np.savez_compressed(filename % idx, feature=features, label=labels)
-
-    q_ggodari.put((feature_list, label_list))
-    return
-
-
 def _convert_dataset_to_npz(encoder, batch_size, file_list, out_filename):
     thread_count = os.cpu_count() - 1
 
@@ -62,30 +28,40 @@ def _convert_dataset_to_npz(encoder, batch_size, file_list, out_filename):
     #     result_list = p.starmap(encode_data_worker, (encoder, batch_size, out_filename, q_infile, q_data, index, lock))
     thread_list = []
     for _ in range(thread_count):
-        p = multiprocessing.Process(target=encode_data_worker,
+        p = multiprocessing.Process(target=encoder.encode_data_worker,
                                     args=(encoder, batch_size, out_filename, q_infile, q_ggodari, index, lock))
         p.daemon = False
         p.start()
         thread_list.append(p)
 
-    feature_list = []
-    label_list = []
+    ggodari_list = []
     for _ in range(thread_count):
-        feature_remains, label_remains = q_ggodari.get()
-
+        ggodari_list.append(q_ggodari.get())
     for p in thread_list:
         p.join()
 
     # Save ggodari
-    print('Start to save ggodari')
-    while len(feature_list) > 0:
-        features = np.concatenate(feature_list[:batch_size], axis=0)
-        labels = np.concatenate(label_list[:batch_size], axis=0)
-        feature_list = feature_list[batch_size:]
-        label_list = label_list[batch_size:]
-        np.savez_compressed(out_filename % index.value, feature=features, label=labels)
-        print(out_filename % index.value)
-        index.value += 1
+    encoder.ggodari_merger(ggodari_list, batch_size, out_filename, index.value)
+
+
+    # feature_list = []
+    # label_list = []
+    # for _ in range(thread_count):
+    #     feature_remains, label_remains = q_ggodari.get()
+    #
+    # for p in thread_list:
+    #     p.join()
+    #
+    # # Save ggodari
+    # print('Start to save ggodari')
+    # while len(feature_list) > 0:
+    #     features = np.concatenate(feature_list[:batch_size], axis=0)
+    #     labels = np.concatenate(label_list[:batch_size], axis=0)
+    #     feature_list = feature_list[batch_size:]
+    #     label_list = label_list[batch_size:]
+    #     np.savez_compressed(out_filename % index.value, feature=features, label=labels)
+    #     print(out_filename % index.value)
+    #     index.value += 1
 
 
 def convert_dataset_to_npz(encoder, batch, in_dir, out_filename_format, test_ratio, overwrite=False):
@@ -113,14 +89,14 @@ def convert_dataset_to_npz(encoder, batch, in_dir, out_filename_format, test_rat
         print('npz already exists. Skipping converting')
 
 
-def npz_preloader(q_infile, q_data):
+def npz_preloader(encoder, q_infile, q_data):
     while True:
-        loaded = np.load(q_infile.get())
-        q_data.put((loaded['feature'], loaded['label']))
+        q_data.put(encoder.load(q_infile.get()))
 
 
 class DataGenerator:
     def __init__(self, encoder, batch, dataset_dir, out_dir, test_ratio, out_filename_format=None, overwrite=False):
+        self.encoder = encoder
         multiprocessing.freeze_support()
         if out_filename_format is None:
             out_filename_format = f'{encoder.name()}_{batch}batch_{test_ratio}/%s_%s.npz'
@@ -145,7 +121,7 @@ class DataGenerator:
             q_infile = multiprocessing.Queue(maxsize=len(self.npz_files[work]) * 2)
             q_data = multiprocessing.Queue(maxsize=thread_count * 16)
             for _ in range(thread_count):
-                p = multiprocessing.Process(target=npz_preloader, args=(q_infile, q_data))
+                p = multiprocessing.Process(target=npz_preloader, args=(self.encoder, q_infile, q_data))
                 p.daemon = True
                 p.start()
                 thread_list.append(p)
@@ -163,8 +139,8 @@ class DataGenerator:
                         yield feature, label
                 else:
                     for file in self.npz_files[work]:
-                        loaded = np.load(file)
-                        yield loaded['feature'], loaded['label']
+                        feature, label = self.encoder.load(file)
+                        yield feature, label
         except GeneratorExit:
             if use_multithread:
                 for p in thread_list:

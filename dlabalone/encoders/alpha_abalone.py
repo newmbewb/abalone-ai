@@ -1,17 +1,22 @@
+import queue
+from tensorflow.keras.utils import to_categorical
+
 import numpy as np
 
 from dlabalone.ablboard import Board, GameState
 from dlabalone.abltypes import Player, Direction
 from dlabalone.encoders.base import Encoder
 from dlabalone.encoders.plane_generator import calc_opp_layers
+from dlabalone.utils import load_file_board_move_pair
 
 
 class AlphaAbaloneEncoder(Encoder):
-    def __init__(self, board_size):
+    def __init__(self, board_size, mode):
         super().__init__(board_size)
         self.num_planes = 45
         self.valid_map = np.zeros((self.max_xy, self.max_xy))
         self.invalid_map = np.ones((self.max_xy, self.max_xy))
+        self.mode = mode
         for x, y in Board.valid_grids:
             self.valid_map[y, x] = 1
             self.valid_map[y, x] = 0
@@ -99,6 +104,66 @@ class AlphaAbaloneEncoder(Encoder):
                               plain_vuln_points_list)
 
     @staticmethod
+    def encode_data_worker(encoder, batch_size, filename, q_infile, q_ggodari, index, lock):
+        num_classes = encoder.num_moves()
+        feature_list = []
+        policy_list = []
+        value_list = []
+        while True:
+            try:
+                file = q_infile.get_nowait()
+            except queue.Empty:
+                break
+            pair_list = load_file_board_move_pair(file, with_value=True)
+            print(f'Encoding {file}')
+            for board, move, advantage, value in pair_list:
+                move_num = encoder.encode_move(move)
+                policy = np.zeros(num_classes)
+                policy[move_num] = advantage
+                feature = encoder.encode_board(board)
+
+                feature = np.expand_dims(feature, axis=0)
+                policy = np.expand_dims(policy, axis=0)
+                value = np.expand_dims(value, axis=0)
+                feature_list.append(feature)
+                policy_list.append(policy)
+                value_list.append(value)
+                if len(feature_list) == batch_size:
+                    features = np.concatenate(feature_list, axis=0)
+                    policies = np.concatenate(policy_list, axis=0)
+                    values = np.concatenate(value_list, axis=0)
+                    feature_list = []
+                    policy_list = []
+                    value_list = []
+                    with lock:
+                        idx = index.value
+                        index.value += 1
+                    np.savez_compressed(filename % idx, feature=features, policy=policies, value=value)
+
+        q_ggodari.put((feature_list, policy_list, value_list))
+        return
+
+    @staticmethod
+    def ggodari_merger(ggodari_list, batch_size, out_filename, index):
+        feature_list = []
+        policy_list = []
+        value_list = []
+        for feature, policy, value in ggodari_list:
+            feature_list += feature
+            policy_list += policy
+            value_list += value
+
+        while len(feature_list) > 0:
+            features = np.concatenate(feature_list[:batch_size], axis=0)
+            policies = np.concatenate(policy_list[:batch_size], axis=0)
+            values = np.concatenate(value_list[:batch_size], axis=0)
+            feature_list = feature_list[batch_size:]
+            policy_list = policy_list[batch_size:]
+            value_list = value_list[batch_size:]
+            np.savez_compressed(out_filename % index, feature=features, policy=policies, value=value)
+            index += 1
+
+    @staticmethod
     def _move_list2np_arr(np_arr, move_list):
         for move in move_list:
             length = len(move.stones)
@@ -114,9 +179,13 @@ class AlphaAbaloneEncoder(Encoder):
             x, y = stone
             np_arr[0, y, x] = 1
 
+    def load(self, file):
+        loaded = np.load(file)
+        return loaded['feature'], loaded[self.mode]
+
     def shape(self):
         return self.num_planes, self.max_xy, self.max_xy
 
 
-def create(board_size):
-    return AlphaAbaloneEncoder(board_size)
+def create(board_size, mode):
+    return AlphaAbaloneEncoder(board_size, mode)
