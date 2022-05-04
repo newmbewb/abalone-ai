@@ -138,7 +138,7 @@ class AlphaAbaloneEncoder(Encoder):
                     with lock:
                         idx = index.value
                         index.value += 1
-                    np.savez_compressed(filename % idx, feature=features, policy=policies, value=value)
+                    np.savez_compressed(filename % idx, feature=features, policy=policies, value=values)
 
         q_ggodari.put((feature_list, policy_list, value_list))
         return
@@ -160,7 +160,7 @@ class AlphaAbaloneEncoder(Encoder):
             feature_list = feature_list[batch_size:]
             policy_list = policy_list[batch_size:]
             value_list = value_list[batch_size:]
-            np.savez_compressed(out_filename % index, feature=features, policy=policies, value=value)
+            np.savez_compressed(out_filename % index, feature=features, policy=policies, value=values)
             index += 1
 
     @staticmethod
@@ -185,6 +185,14 @@ class AlphaAbaloneEncoder(Encoder):
 
     def shape(self):
         return self.num_planes, self.max_xy, self.max_xy
+
+    def label_shape(self):
+        if self.mode == 'policy':
+            return self.num_moves(),
+        elif self.mode == 'value':
+            return 1,
+        else:
+            assert False, "Wrong mode"
 
 
 def create(board_size, mode):

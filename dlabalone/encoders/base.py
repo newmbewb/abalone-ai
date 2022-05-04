@@ -133,6 +133,9 @@ class Encoder:
         loaded = np.load(file)
         return loaded['feature'], loaded['label']
 
+    def label_shape(self):
+        return self.num_moves(),
+
     def shape(self):
         raise NotImplementedError()
 
