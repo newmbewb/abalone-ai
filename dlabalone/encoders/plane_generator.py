@@ -36,7 +36,8 @@ def _is_danger_point(board, point, length):
         assert False, 'Wrong length'
 
 
-def calc_opp_layers(board, _next_player):
+def calc_opp_layers(board, next_player):
+    _next_player = next_player
     opp_player = _next_player.other
     vuln_points = {}
     vuln_stones = {2: set(), 3: set()}

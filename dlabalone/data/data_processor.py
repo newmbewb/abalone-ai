@@ -137,31 +137,39 @@ class DataGenerator:
         assert work in ['train', 'test'], f'Invalid work type {work}'
         return self.step_count[work]
 
-    def generate(self, work):
+    def generate(self, work, use_multithread=False):
         assert work in ['train', 'test'], f'Invalid work type {work}'
-        thread_count = 4
-        q_infile = multiprocessing.Queue(maxsize=len(self.npz_files[work]) * 8)
-        q_data = multiprocessing.Queue(maxsize=thread_count)
-        thread_list = []
-        for _ in range(thread_count):
-            p = multiprocessing.Process(target=npz_preloader, args=(q_infile, q_data))
-            p.daemon = False
-            p.start()
-            thread_list.append(p)
+        if use_multithread:
+            thread_list = []
+            thread_count = 4
+            q_infile = multiprocessing.Queue(maxsize=len(self.npz_files[work]) * 2)
+            q_data = multiprocessing.Queue(maxsize=thread_count * 16)
+            for _ in range(thread_count):
+                p = multiprocessing.Process(target=npz_preloader, args=(q_infile, q_data))
+                p.daemon = True
+                p.start()
+                thread_list.append(p)
+        else:
+            thread_list = []
+            q_infile = None
+            q_data = None
         try:
             while True:
-                for file in self.npz_files[work]:
-                    loaded = np.load(file)
-                    yield loaded['feature'], loaded['label']
-                for file in self.npz_files[work]:
-                    q_infile.put(file)
-                for _ in range(len(self.npz_files[work])):
-                    feature, label = q_data.get()
-                    yield feature, label
+                if use_multithread:
+                    for file in self.npz_files[work]:
+                        q_infile.put(file)
+                    for _ in range(len(self.npz_files[work])):
+                        feature, label = q_data.get()
+                        yield feature, label
+                else:
+                    for file in self.npz_files[work]:
+                        loaded = np.load(file)
+                        yield loaded['feature'], loaded['label']
         except GeneratorExit:
-            for p in thread_list:
-                p.terminate()
-                p.join()
+            if use_multithread:
+                for p in thread_list:
+                    p.terminate()
+                    p.join()
 
 
 class DataGeneratorMock:
