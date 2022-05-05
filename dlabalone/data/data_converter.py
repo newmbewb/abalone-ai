@@ -27,3 +27,5 @@ def plaindata2valuedata(dir_plaindata, dir_valuedata, file_filter=None):
             line += f'&1&{next_value}'
             next_value *= -1
             fd_value.write(line + '\n')
+        fd_plain.close()
+        fd_value.close()
