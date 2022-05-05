@@ -117,7 +117,7 @@ def save_file_board_move_pair(filename, pair_list, with_value=False):
     fd.close()
 
 
-def load_file_board_move_pair(filename, with_value=False):
+def load_file_board_move_pair(filename, with_value=False, recover_player=False):
     fd = open(filename, 'r')
     size, length = fd.readline().split(',')
     Board.set_size(int(size))
@@ -128,11 +128,12 @@ def load_file_board_move_pair(filename, with_value=False):
         if with_value:
             board_str, move_str, advantage, value = line.strip().split(board_move_seperator)
             pair_list.append((decode_board_from_str(board_str, max_xy, next_player), Move.str_to_move(move_str),
-                              advantage, value))
+                              float(advantage), float(value)))
         else:
             board_str, move_str = line.strip().split(board_move_seperator)
             pair_list.append((decode_board_from_str(board_str, max_xy, next_player), Move.str_to_move(move_str)))
-        next_player = next_player.other
+        if recover_player:
+            next_player = next_player.other
     fd.close()
     return pair_list
 

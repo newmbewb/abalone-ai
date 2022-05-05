@@ -25,7 +25,7 @@ class AlphaAbalone(Network):
         if self.mode == 'policy':
             model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
         elif self.mode == 'value':
-            model.compile(loss=Huber(), optimizer=optimizer, metrics=['mean_squared_error'])
+            model.compile(loss='mean_squared_error', optimizer=optimizer, metrics=['mean_squared_error'])
         else:
             return None
         return model

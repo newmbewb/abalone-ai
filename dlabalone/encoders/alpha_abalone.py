@@ -34,7 +34,7 @@ class AlphaAbaloneEncoder(Encoder):
         return np.concatenate([player_attack_plains, opp_attack_plains, basic_plains])
 
     def _generate_basic_plains(self, board, next_player=Player.black):
-        board_matrix = np.zeros(self.shape())
+        board_matrix = np.zeros((4, self.max_xy, self.max_xy))
         for point, player in board.grid.items():
             x, y = point
             if player == next_player:

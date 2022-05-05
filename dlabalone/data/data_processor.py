@@ -155,6 +155,10 @@ class DataGeneratorMock:
         self.steps = {'train': steps_train, 'test': steps_test}
         self.feature = np.random.rand(*((self.batch,) + self.encoder.shape()))
         self.label = np.random.rand(*((self.batch,) + self.encoder.label_shape()))
+        # self.label = np.concatenate([
+        #     np.ones(((self.batch // 2,) + self.encoder.label_shape())),
+        #     np.ones(((self.batch // 2,) + self.encoder.label_shape())) * -1,])
+        # print(self.label)
 
     def get_num_steps(self, work):
         assert work in ['train', 'test'], f'Invalid work type {work}'
