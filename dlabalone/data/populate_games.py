@@ -2,6 +2,7 @@ from dlabalone.ablboard import Board, Move, GameState
 from dlabalone.abltypes import Direction, add, Player
 import os
 from dlabalone.utils import print_board, encode_board_str, load_file_board_move_pair, save_file_board_move_pair
+import numpy as np
 
 
 class GamePopulator:
@@ -9,6 +10,19 @@ class GamePopulator:
         self.board_size = board_size
         Board.set_size(board_size)
         self.center = (board_size - 1, board_size - 1)
+
+        # Initialize rotation_map
+        self.rotation_map = {}
+        for x, y in Board.valid_grids:
+            new_x, new_y = self._rotate_point((x, y))
+            self.rotation_map[(x, y)] = (new_x, new_y)
+
+    def rotate_numpy_board(self, board):
+        new_board = np.array(board)
+        for x, y in Board.valid_grids:
+            new_x, new_y = self.rotation_map[(x, y)]
+            new_board[new_y, new_x] = board[y, x]
+        return new_board
 
     def rotate_point_one_step(self, point):
         if point == self.center:
@@ -63,10 +77,13 @@ class GamePopulator:
             point = self.rotate_point_one_step(point)
         return point
 
+    def _rotate_point_fast(self, point):
+        return self.rotation_map[point]
+
     def rotate_point(self, _point, count):
         point = tuple(_point)
         for _ in range(count):
-            point = self._rotate_point(point)
+            point = self._rotate_point_fast(point)
         return point
 
     def _rotate_board(self, board):

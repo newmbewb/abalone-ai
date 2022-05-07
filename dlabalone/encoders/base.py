@@ -62,7 +62,7 @@ class Encoder:
     def name(self):
         raise NotImplementedError()
 
-    def encode_board(self, game_board):
+    def encode_board(self, game_board, next_player):
         raise NotImplementedError()
 
     def encode_move(self, move):
