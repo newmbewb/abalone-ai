@@ -29,8 +29,8 @@ class AlphaAbaloneEncoder(Encoder):
         push_moves = []
         kill_moves, normal_moves = game.legal_moves(separate_kill=True, push_moves=push_moves)
         player_attack_plains = self._generate_player_attack_plains(kill_moves, push_moves)
-        opp_attack_plains = self._generate_opp_attack_plains(game_board)
-        basic_plains = self._generate_basic_plains(game_board)
+        opp_attack_plains = self._generate_opp_attack_plains(game_board, next_player)
+        basic_plains = self._generate_basic_plains(game_board, next_player)
         return np.concatenate([player_attack_plains, opp_attack_plains, basic_plains])
 
     def _generate_basic_plains(self, board, next_player=Player.black):
