@@ -21,7 +21,7 @@ class AlphaAbalone(Network):
         super().__init__(name)
 
     def model(self, input_shape, num_classes, optimizer='adam', dropout_rate=0.1):
-        model = self.alphago_model(input_shape, num_classes)
+        model = self.alphago_model(input_shape, num_classes, dropout_rate)
         if self.mode == 'policy':
             model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
         elif self.mode == 'value':
@@ -30,7 +30,7 @@ class AlphaAbalone(Network):
             return None
         return model
 
-    def alphago_model(self, input_shape, num_classes,
+    def alphago_model(self, input_shape, num_classes, dropout_rate,
                       num_filters=192,
                       first_kernel_size=5,
                       other_kernel_size=3):
@@ -38,10 +38,12 @@ class AlphaAbalone(Network):
         model = Sequential()
         model.add(
             Conv2D(num_filters, first_kernel_size, input_shape=input_shape, padding='same', activation='relu'))
+        model.add(Dropout(rate=dropout_rate))
 
         for i in range(2, 12):
             model.add(
                 Conv2D(num_filters, other_kernel_size, padding='same', activation='relu'))
+            model.add(Dropout(rate=dropout_rate))
 
         if self.mode == 'policy':
             model.add(Flatten())
@@ -51,6 +53,7 @@ class AlphaAbalone(Network):
         elif self.mode == 'value':
             model.add(
                 Conv2D(num_filters, other_kernel_size, padding='same', activation='relu'))
+            model.add(Dropout(rate=dropout_rate))
             model.add(
                 Conv2D(filters=1, kernel_size=1, padding='same', activation='relu'))
             model.add(Flatten())

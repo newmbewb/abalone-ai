@@ -19,8 +19,8 @@ if __name__ == '__main__':
     populated_game_name = os.path.join(populated_game_dir, 'game_%d.txt')
 
     # Convert normal game data to game with value
-    for path in plain_game_dir_paths:
-        plaindata2valuedata(path, game_dir_path)
+    # for path in plain_game_dir_paths:
+    #     plaindata2valuedata(path, game_dir_path)
 
     print('Start to populate games')
     populator = GamePopulator(board_size)

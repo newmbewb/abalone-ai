@@ -1,3 +1,4 @@
+import h5py
 import numpy as np
 
 __all__ = [
@@ -9,11 +10,12 @@ __all__ = [
 
 
 class ExperienceCollector:
-    def __init__(self):
+    def __init__(self, h5file_name):
         self.states = []
         self.actions = []
         self.rewards = []
         self.advantages = []
+        self.h5file_name = h5file_name
         self._current_episode_states = []
         self._current_episode_actions = []
         self._current_episode_estimated_values = []
@@ -41,6 +43,11 @@ class ExperienceCollector:
         self._current_episode_states = []
         self._current_episode_actions = []
         self._current_episode_estimated_values = []
+
+    def save_as_file(self):
+        buffer = ExperienceBuffer(self.states, self.actions, self.rewards, self.advantages)
+        with h5py.File(self.h5file_name, 'w') as experience_outf:
+            buffer.serialize(experience_outf)
 
 
 class ExperienceBuffer:

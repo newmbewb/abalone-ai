@@ -24,6 +24,12 @@ class GamePopulator:
             new_board[new_y, new_x] = board[y, x]
         return new_board
 
+    def rotate_numpy_encoded(self, encoded):
+        ret = np.zeros(encoded.shape)
+        for i, board in enumerate(encoded):
+            ret[i] = self.rotate_numpy_board(board)
+        return ret
+
     def rotate_point_one_step(self, point):
         if point == self.center:
             return point

@@ -18,23 +18,27 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 if __name__ == '__main__':
     multiprocessing.freeze_support()
-    mode = 'value'
+    mode = 'policy'
+    # optimizer = SGD(learning_rate=0.05)
+    optimizer = 'adam'
+    dropout_rate = 0.3
     encoder = get_encoder_by_name('alpha_abalone', 5, mode)
     generator = DataGenerator(encoder, 1024, '../data/data_with_value/dataset', '../data/encoded_data', 0.2)
+    # generator = DataGenerator(encoder, 512, '../data/data_with_value/dataset', '../data/encoded_data', 0.2)
     # encoder = get_encoder_by_name('fourplane', 5)
     # generator = DataGenerator(encoder, 4096, '../data/dataset', '../data/encoded_data', 0.2)
 
 
-    # generator = DataGeneratorMock(encoder, 1024, 1000, 250)
+    # generator = DataGeneratorMock(encoder, 512, 1000, 250)
     # dataset = tf.data.Dataset.from_generator(lambda: generator.generate('train'), (tf.int8, tf.int8),
     #                                          (encoder.shape(), (encoder.num_moves(), )))
     # dataset = dataset.batch(256)
 
     # model_generator = alpha_abalone.AlphaAbalone(mode)
-    model_generator = ac_simple1.ACSimple(mode)
+    model_generator = ac_simple1.ACSimple(mode, dropout_rate=dropout_rate)
     # model_generator = simple1.Simple1()
     # model = model_generator.model(encoder.shape(), encoder.num_moves(), optimizer=SGD(learning_rate=1))
-    model = model_generator.model(encoder.shape(), encoder.num_moves(), optimizer='sgd')
+    model = model_generator.model(encoder.shape(), encoder.num_moves(), optimizer=optimizer)
     # model = load_model('../checkpoints/simple1_twoplane_epoch_10.h5')
 
     # Make network name
