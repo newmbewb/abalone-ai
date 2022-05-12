@@ -1,11 +1,12 @@
 class MoveSelector:
-    def __init__(self, name=None, win_rate_max=0.45, win_rate_min=0.20):
+    def __init__(self, name=None, temperature=0.5):
         if name is None:
             self._name = type(self).__name__
         else:
             self._name = name
-        self.win_rate_max = win_rate_max
-        self.win_rate_min = win_rate_min
+        self.temperature = temperature
+        self.temp_max = 1
+        self.temp_min = 0.02
 
     def name(self):
         return self._name
@@ -14,16 +15,21 @@ class MoveSelector:
         raise NotImplementedError()
 
     def temperature_up(self):
-        raise NotImplementedError()
+        self.temperature += 0.01
+        self.temperature = min(self.temperature, self.temp_max)
 
     def temperature_down(self):
-        raise NotImplementedError()
+        self.temperature -= 0.01
+        self.temperature = max(self.temperature, self.temp_min)
 
     def is_over(self):
-        raise NotImplementedError()
+        if self.temperature <= 0:
+            return True
+        else:
+            return False
 
-    def adjust_temperature(self, win_rate):
-        if win_rate > self.win_rate_max:
-            self.temperature_up()
-        elif win_rate < self.win_rate_min:
-            self.temperature_down()
+    # def adjust_temperature(self, win_rate):
+    #     if win_rate > self.win_rate_max:
+    #         self.temperature_up()
+    #     elif win_rate < self.win_rate_min:
+    #         self.temperature_down()

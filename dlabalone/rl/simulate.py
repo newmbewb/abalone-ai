@@ -2,6 +2,7 @@ import random
 import os
 import h5py
 import numpy as np
+import tensorflow as tf
 
 from dlabalone.ablboard import GameState
 from dlabalone.abltypes import Player
@@ -65,9 +66,10 @@ class ExperienceGameState(object):
         action = self.encoder[next_player].encode_move(move)
         for collector in self.collectors[next_player]:
             collector.record_decision(encoded, action, estimated_value)
-            encoded = self.populator.rotate_numpy_encoded(encoded)
-            move = self.populator.rotate_move(move, 1)
-            action = self.encoder[next_player].encode_move(move)
+            if self.populator is not None:
+                encoded = self.populator.rotate_numpy_encoded(encoded)
+                move = self.populator.rotate_move(move, 1)
+                action = self.encoder[next_player].encode_move(move)
         self.add_stat(action, move_probs)
         self.game_state.apply_move_lite(move)
 
@@ -104,6 +106,15 @@ class ExperienceGameState(object):
             return True
         return self.too_many_repeat
 
+    def can_last_attack(self):
+        if self.next_player == Player.black:
+            if self.game_state.board.dead_stones_white == 5:
+                return True
+        elif self.next_player == Player.white:
+            if self.game_state.board.dead_stones_black == 5:
+                return True
+        return False
+
     # Functions from GameStat
     @property
     def board(self):
@@ -113,8 +124,8 @@ class ExperienceGameState(object):
     def next_player(self):
         return self.game_state.next_player
 
-    def legal_moves(self):
-        return self.game_state.legal_moves()
+    def legal_moves(self, separate_kill=False):
+        return self.game_state.legal_moves(separate_kill=separate_kill)
 
     def is_over(self):
         return self.game_state.is_over()
@@ -152,18 +163,22 @@ def experience_simulation(num_games,
     game_list = []
     for index in range(num_games):
         if exp_dir:
-            fd_black = h5py.File(h5file_black % index, 'w')
-            fd_white = h5py.File(h5file_white % index, 'w')
+            black_filename = h5file_black % index
+            white_filename = h5file_white % index
         else:
-            fd_black = None
-            fd_white = None
+            black_filename = None
+            white_filename = None
         game_list.append(ExperienceGameState(encoder_black, encoder_white,
-                                             h5file_black=fd_black, h5file_white=fd_white, populator=populator))
+                                             h5file_black=black_filename, h5file_white=white_filename,
+                                             populator=populator))
 
     #####################
     # Run games
     #####################
+    game_steps = 0
     while True:
+        print(f'Current step: {game_steps}, current_game count: {len(game_list)}')
+        game_steps += 1
         # Get encoded boards
         predict_input = np.zeros((len(game_list),) + encoder[next_player].shape())
         for index, game in enumerate(game_list):
@@ -178,7 +193,11 @@ def experience_simulation(num_games,
         # Select move & apply
         for index, game in enumerate(game_list):
             move_probs, estimated_value = predict_convertor[next_player](predict_output_batch_list, index)
-            move = move_selector[next_player](encoder[next_player], move_probs, game.legal_moves())
+            moves_kill, moves_normal = game.legal_moves(separate_kill=True)
+            if len(moves_kill) > 0 and game.can_last_attack():
+                move = moves_kill[0]
+            else:
+                move = move_selector[next_player](encoder[next_player], move_probs, moves_kill + moves_normal)
             game.apply_move(move, predict_input[index], estimated_value, move_probs)
 
         # Remove finished games
