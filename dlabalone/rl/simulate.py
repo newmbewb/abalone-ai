@@ -7,39 +7,20 @@ import tensorflow as tf
 from dlabalone.ablboard import GameState
 from dlabalone.abltypes import Player
 from dlabalone.data.populate_games import GamePopulator
-from dlabalone.rl.experience import ExperienceCollector
+from dlabalone.rl.experience import ExperienceCollector, ExperienceSaver
 from dlabalone.utils import encode_board_str
 
 
-def _get_filename_with_num(orig_name):
-    basename = os.path.basename(orig_name)
-    if basename.count('.') > 0:
-        dot_index = orig_name.rfind('.')
-        return orig_name[:dot_index]+'_%d'+orig_name[dot_index:]
-    else:
-        return orig_name + '_%d'
-
-
-def _fill_collectors(collector_list, orig_name, populator):
-    if populator is not None:
-        name_format = _get_filename_with_num(orig_name)
-        for i in range(6):
-            collector_list.append(ExperienceCollector(name_format % i))
-    else:
-        collector_list.append(ExperienceCollector(orig_name))
-
-
 class ExperienceGameState(object):
-    def __init__(self, encoder_black, encoder_white, h5file_black=None, h5file_white=None, populator=None):
+    def __init__(self, encoder_black, encoder_white, saver, populator=None):
         self.collectors_black = []
         self.collectors_white = []
-        if h5file_black is not None:
-            _fill_collectors(self.collectors_black, h5file_black, populator)
+        if saver is not None:
+            _fill_collectors(self.collectors_black, saver, populator)
             for collector in self.collectors_black:
                 collector.begin_episode()
 
-        if h5file_white is not None:
-            _fill_collectors(self.collectors_white, h5file_white, populator)
+            _fill_collectors(self.collectors_white, saver, populator)
             for collector in self.collectors_white:
                 collector.begin_episode()
         self.collectors = {Player.black: self.collectors_black,
@@ -47,9 +28,7 @@ class ExperienceGameState(object):
         self.encoder = {Player.black: encoder_black,
                         Player.white: encoder_white}
         self.populator = populator
-        self.stat = {'total_moves': 0, 'new_moves': 0, 'winner': None,
-                     'h5files': (list(map(lambda x: x.h5file_name, self.collectors_black)),
-                                 list(map(lambda x: x.h5file_name, self.collectors_white)))}
+        self.stat = {'total_moves': 0, 'new_moves': 0, 'winner': None}
         self.game_state = GameState.new_game(5)
         self.step_count = 0
         self.past_boards = {}
@@ -88,7 +67,8 @@ class ExperienceGameState(object):
             reward_black = -1
             reward_white = 1
         else:
-            return
+            reward_black = 0
+            reward_white = 0
 
         for collector in self.collectors[Player.black]:
             collector.complete_episode(reward_black)
@@ -136,16 +116,9 @@ def experience_simulation(num_games,
                           encoder_black, encoder_white,
                           move_selector_black, move_selector_white,
                           predict_convertor_black, predict_convertor_white,
-                          exp_dir=None, black_name='black', white_name='white', populate_games=True):
+                          exp_dir=None, black_name='black', white_name='white', populate_games=True,
+                          experience_per_file=65536):
     # Save parameters
-    h5file_black = None
-    h5file_white = None
-    if exp_dir:
-        randkey = random.random()
-        h5file_black = f'experience_{randkey}_%03d_{black_name}_black.h5'
-        h5file_white = f'experience_{randkey}_%03d_{white_name}_white.h5'
-        h5file_black = os.path.join(exp_dir, h5file_black)
-        h5file_white = os.path.join(exp_dir, h5file_white)
     encoder = {Player.black: encoder_black, Player.white: encoder_white}
     models = {Player.black: models_black, Player.white: models_white}
     predict_convertor = {Player.black: predict_convertor_black, Player.white: predict_convertor_white}
@@ -161,15 +134,13 @@ def experience_simulation(num_games,
 
     # Initialize games
     game_list = []
+    if exp_dir:
+        saver = ExperienceSaver(exp_dir, experience_per_file)
+    else:
+        saver = None
     for index in range(num_games):
-        if exp_dir:
-            black_filename = h5file_black % index
-            white_filename = h5file_white % index
-        else:
-            black_filename = None
-            white_filename = None
         game_list.append(ExperienceGameState(encoder_black, encoder_white,
-                                             h5file_black=black_filename, h5file_white=white_filename,
+                                             saver=saver,
                                              populator=populator))
 
     #####################
@@ -177,7 +148,7 @@ def experience_simulation(num_games,
     #####################
     game_steps = 0
     while True:
-        print(f'Current step: {game_steps}, current_game count: {len(game_list)}')
+        # print(f'Current step: {game_steps}, current_game count: {len(game_list)}')
         game_steps += 1
         # Get encoded boards
         predict_input = np.zeros((len(game_list),) + encoder[next_player].shape())
@@ -203,12 +174,10 @@ def experience_simulation(num_games,
         # Remove finished games
         finished_games = []
         for game in game_list:
-            if game.is_over():
+            if game.is_over() or game.is_draw():
                 finished_games.append(game)
                 game.save_result()
                 stat_list.append(game.get_stat())
-            elif game.is_draw():
-                finished_games.append(game)
         for game in finished_games:
             game_list.remove(game)
 
@@ -216,3 +185,11 @@ def experience_simulation(num_games,
             break
         next_player = next_player.other
     return stat_list
+
+
+def _fill_collectors(collector_list, saver: ExperienceSaver, populator):
+    if populator is not None:
+        for i in range(6):
+            collector_list.append(ExperienceCollector(saver))
+    else:
+        collector_list.append(ExperienceCollector(saver))

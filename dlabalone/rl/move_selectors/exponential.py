@@ -10,6 +10,7 @@ class ExponentialMoveSelector(MoveSelector):
 
     def __call__(self, encoder, move_probs, legal_moves):
         move_probs = move_probs ** ((1 - self.temperature) * self.max_exponential)
+        move_probs = np.nan_to_num(move_probs)
         eps = 1e-6
         num_moves = encoder.num_moves()
 

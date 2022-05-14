@@ -1,3 +1,6 @@
+import os
+import random
+
 import h5py
 import numpy as np
 
@@ -9,16 +12,58 @@ __all__ = [
 ]
 
 
-class ExperienceCollector:
-    def __init__(self, h5file_name):
+class ExperienceSaver:
+    def __init__(self, exp_dir, experience_per_file):
+        self.exp_dir = exp_dir
+        self.experience_per_file = experience_per_file
+        self.h5file_format = os.path.join(self.exp_dir, f'experiences_{random.random()}_%d.h5')
+        self.h5file_index = 0
         self.states = []
         self.actions = []
         self.rewards = []
         self.advantages = []
-        self.h5file_name = h5file_name
+
+    def save_data(self, states, actions, rewards, advantages):
+        self.states += states
+        self.actions += actions
+        self.rewards += rewards
+        self.advantages += advantages
+        while len(self.states) > self.experience_per_file:
+            self.save_as_file(self.experience_per_file)
+
+    def save_as_file(self, length=None):
+        if length is None:
+            length = len(self.states)
+        if length <= 0:
+            return
+        buffer = ExperienceBuffer(self.states[:length],
+                                  self.actions[:length],
+                                  self.rewards[:length],
+                                  self.advantages[:length])
+
+        self.states = self.states[length:]
+        self.actions = self.actions[length:]
+        self.rewards = self.rewards[length:]
+        self.advantages = self.advantages[length:]
+
+        self.h5file_index += 1
+        with h5py.File(self.h5file_format % self.h5file_index, 'w') as experience_outf:
+            buffer.serialize(experience_outf)
+
+    def __del__(self):
+        self.save_as_file()
+
+
+class ExperienceCollector:
+    def __init__(self, saver: ExperienceSaver):
+        self.states = []
+        self.actions = []
+        self.rewards = []
+        self.advantages = []
         self._current_episode_states = []
         self._current_episode_actions = []
         self._current_episode_estimated_values = []
+        self.saver = saver
 
     def begin_episode(self):
         self._current_episode_states = []
@@ -45,9 +90,7 @@ class ExperienceCollector:
         self._current_episode_estimated_values = []
 
     def save_as_file(self):
-        buffer = ExperienceBuffer(self.states, self.actions, self.rewards, self.advantages)
-        with h5py.File(self.h5file_name, 'w') as experience_outf:
-            buffer.serialize(experience_outf)
+        self.saver.save_data(self.states, self.actions, self.rewards, self.advantages)
 
 
 class ExperienceBuffer:
@@ -59,10 +102,11 @@ class ExperienceBuffer:
 
     def serialize(self, h5file):
         h5file.create_group('experience')
-        h5file['experience'].create_dataset('states', data=self.states, compression="gzip")
-        h5file['experience'].create_dataset('actions', data=self.actions, compression="gzip")
-        h5file['experience'].create_dataset('rewards', data=self.rewards, compression="gzip")
-        h5file['experience'].create_dataset('advantages', data=self.advantages, compression="gzip")
+        compression = 'lzf'  # None, 'gzip', 'lzf'
+        h5file['experience'].create_dataset('states', data=self.states, compression=compression)
+        h5file['experience'].create_dataset('actions', data=self.actions, compression=compression)
+        h5file['experience'].create_dataset('rewards', data=self.rewards, compression=compression)
+        h5file['experience'].create_dataset('advantages', data=self.advantages, compression=compression)
 
 
 def combine_experience(collectors):

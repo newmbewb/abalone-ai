@@ -11,6 +11,9 @@ class MoveSelector:
     def name(self):
         return self._name
 
+    def __str__(self):
+        return f'{self.name()}/Temp:{self.temperature:.5f}'
+
     def __call__(self, encoder, move_probs, legal_moves):
         raise NotImplementedError()
 
