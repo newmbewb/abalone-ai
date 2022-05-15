@@ -38,8 +38,9 @@ if __name__ == '__main__':
     model_generator = ac_simple1.ACSimple(mode, dropout_rate=dropout_rate)
     # model_generator = simple1.Simple1()
     # model = model_generator.model(encoder.shape(), encoder.num_moves(), optimizer=SGD(learning_rate=1))
-    # model = model_generator.model(encoder.shape(), encoder.num_moves(), optimizer=optimizer)
-    model = load_model('../data/checkpoints/ACSimple1Policy_dropout0.1_AlphaAbaloneEncoder_epoch_1.h5')
+    model = model_generator.model(encoder.shape(), encoder.num_moves(), optimizer=optimizer)
+    model.summary()
+    # model = load_model('../data/checkpoints/ACSimple1Policy_dropout0.1_AlphaAbaloneEncoder_epoch_1.h5')
 
     # Make network name
     network_name = f'{model_generator.name()}_{encoder.name()}'

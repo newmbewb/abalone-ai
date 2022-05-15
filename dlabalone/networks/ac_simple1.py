@@ -13,6 +13,7 @@ class ACSimple(Network):
     def __init__(self, mode, dropout_rate=0.1):
         self.mode = mode
         self.dropout_rate = dropout_rate
+        self.data_format = "channels_first"
         if mode == 'policy':
             name = f"ACSimple1Policy_dropout{dropout_rate}"
         elif mode == 'value':
@@ -47,8 +48,8 @@ class ACSimple(Network):
             return model
 
         elif self.mode == 'value':
-            model.add(ZeroPadding2D((2, 2)))
-            model.add(Conv2D(64, (5, 5)))
+            model.add(ZeroPadding2D((2, 2), data_format=self.data_format))
+            model.add(Conv2D(64, (5, 5), data_format=self.data_format))
             model.add(Activation('relu'))
             model.add(Dropout(rate=dropout_rate))
 
@@ -59,38 +60,38 @@ class ACSimple(Network):
 
     def _layers(self, input_shape, dropout_rate):
         return [
-            ZeroPadding2D((2, 2), input_shape=input_shape),
-            Conv2D(64, (5, 5), padding='valid'),
+            ZeroPadding2D((2, 2), input_shape=input_shape, data_format=self.data_format),
+            Conv2D(64, (5, 5), data_format=self.data_format),
             Activation('relu'),
             Dropout(rate=dropout_rate),
 
-            ZeroPadding2D((2, 2)),
-            Conv2D(64, (5, 5)),
+            ZeroPadding2D((2, 2), data_format=self.data_format),
+            Conv2D(64, (5, 5), data_format=self.data_format),
             Activation('relu'),
             Dropout(rate=dropout_rate),
 
-            ZeroPadding2D((2, 2)),
-            Conv2D(64, (5, 5)),
+            ZeroPadding2D((2, 2), data_format=self.data_format),
+            Conv2D(64, (5, 5), data_format=self.data_format),
             Activation('relu'),
             Dropout(rate=dropout_rate),
 
-            ZeroPadding2D((2, 2)),
-            Conv2D(48, (5, 5)),
+            ZeroPadding2D((2, 2), data_format=self.data_format),
+            Conv2D(48, (5, 5), data_format=self.data_format),
             Activation('relu'),
             Dropout(rate=dropout_rate),
 
-            ZeroPadding2D((2, 2)),
-            Conv2D(48, (5, 5)),
+            ZeroPadding2D((2, 2), data_format=self.data_format),
+            Conv2D(48, (5, 5), data_format=self.data_format),
             Activation('relu'),
             Dropout(rate=dropout_rate),
 
-            ZeroPadding2D((2, 2)),
-            Conv2D(32, (5, 5)),
+            ZeroPadding2D((2, 2), data_format=self.data_format),
+            Conv2D(32, (5, 5), data_format=self.data_format),
             Activation('relu'),
             Dropout(rate=dropout_rate),
 
-            ZeroPadding2D((2, 2)),
-            Conv2D(32, (5, 5)),
+            ZeroPadding2D((2, 2), data_format=self.data_format),
+            Conv2D(32, (5, 5), data_format=self.data_format),
             Activation('relu'),
             Dropout(rate=dropout_rate),
         ]

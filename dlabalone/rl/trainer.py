@@ -6,6 +6,7 @@ import time
 import h5py
 import numpy as np
 from keras.models import clone_model
+from keras.models import load_model
 from scipy.stats import binom_test
 
 from dlabalone.abltypes import Player
@@ -75,7 +76,13 @@ class DataBuffer:
             self.actions = np.append(self.actions, buffer.actions, axis=0)
             self.values = np.append(self.values, buffer.values, axis=0)
             self.advantages = np.append(self.advantages, buffer.advantages, axis=0)
-        os.unlink(file)
+        while True:
+            try:
+                os.unlink(file)
+                break
+            except PermissionError:
+                print('Failed to delete file due to permission error. retry...')
+                time.sleep(1)
 
     def iter_experience(self, files, experience_count, shuffle=False):
         for file in files:
@@ -133,7 +140,7 @@ class DataBuffer:
             exp_buffer.serialize(experience_outf, compression=self.compression)
 
 
-def train_ac(models, encoder, predict_convertor, train_fn, exp_dir, model_directory,
+def train_ac(load_models, encoder, predict_convertor, train_fn, exp_dir, model_directory,
              max_generation=10000, num_games=1024, comparison_game_count=512, p_value=0.05,
              move_selectors=None, batch_size=1024, model_name='model', populate_games=True, experience_per_file=65536,
              compression=None):
@@ -144,7 +151,8 @@ def train_ac(models, encoder, predict_convertor, train_fn, exp_dir, model_direct
     episode_count = 0
     generation = 1
     total_games = 0
-    models_prev = _clone_models(models)
+    models_prev = load_models()
+    models = load_models()
     for _ in range(max_generation):
         cur_move_selector = move_selectors[move_selector_index]
         move_selector_index = (move_selector_index + 1) % len(move_selectors)
@@ -179,8 +187,7 @@ def train_ac(models, encoder, predict_convertor, train_fn, exp_dir, model_direct
         # Evaluate new model
         print('Evaluating...')
         time_start = time.time()
-        wins, losses, draws = _evaluate_model(models, models_prev, encoder, predict_convertor, comparison_game_count,
-                                             thread_count)
+        wins, losses, draws = _evaluate_model(models, models_prev, encoder, predict_convertor, comparison_game_count)
         print(f'Evaluating time: {time.time() - time_start} seconds')
         print(f'Result: Wins/Losses/Draws = {wins}/{losses}/{draws}')
 
@@ -193,12 +200,23 @@ def train_ac(models, encoder, predict_convertor, train_fn, exp_dir, model_direct
 
             filename = f'{model_name}_Generation_{generation}__{total_games}games_%d.h5'
             filepath = os.path.join(model_directory, filename)
+            model_paths = []
             for i, model in enumerate(models):
                 path = filepath % i
+                model_paths.append(path)
                 # https://www.tensorflow.org/guide/keras/save_and_serialize?hl=ko#weights-only_saving_in_savedmodel_format
                 # If you want to save as checkpoint: https://www.tensorflow.org/tutorials/keras/save_and_load?hl=ko
                 model.save(path)
-            models_prev = _clone_models(models)
+
+            def new_load_models_func():
+                models = []
+                for path in model_paths:
+                    model = load_model(path)
+                    models.append(model)
+                return models
+            load_models = new_load_models_func
+            models_prev = load_models()
+            models = load_models()
 
             episode_count = 0
             generation += 1
@@ -206,7 +224,7 @@ def train_ac(models, encoder, predict_convertor, train_fn, exp_dir, model_direct
             print(f'Too low win rate! Win rate: {win_rate*100:.3f} % (P-value: {current_p_value:.5f})\n' +
                   f'Revert to previous model..')
             episode_count = 0
-            models = _clone_models(models_prev)
+            models = load_models()
         else:
             print(f'Win rate: {win_rate*100:.3f} % (P-value: {current_p_value:.5f}). Keep learning. ' +
                   f'Game count: {total_games}')
@@ -245,16 +263,6 @@ def _train_on_experience(models, encoder, exp_dir, batch_size, train_fn, compres
     files = map(lambda f: os.path.join(exp_dir, f), os.listdir(exp_dir))
     for experiences in data_buffer.iter_experience(files, batch_size):
         train_fn(models, encoder, experiences)
-
-
-def _clone_models(models):
-    cloned_model_list = []
-    for model in models:
-        cloned_model = clone_model(model)
-        cloned_model.set_weights(model.get_weights())
-        cloned_model.compile(optimizer=model.optimizer, loss=model.loss, metrics=model.metrics)
-        cloned_model_list.append(cloned_model)
-    return cloned_model_list
 
 
 def _evaluate_model(models, models_prev, encoder, predict_convertor, num_games):

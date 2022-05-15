@@ -12,6 +12,7 @@ from dlabalone.networks.base import Network
 class AlphaAbalone(Network):
     def __init__(self, mode):
         self.mode = mode
+        self.data_format = "channels_first"
         if mode == 'policy':
             name = "AlphaAbalonePolicy"
         elif mode == 'value':
@@ -37,12 +38,13 @@ class AlphaAbalone(Network):
 
         model = Sequential()
         model.add(
-            Conv2D(num_filters, first_kernel_size, input_shape=input_shape, padding='same', activation='relu'))
+            Conv2D(num_filters, first_kernel_size, input_shape=input_shape, padding='same', activation='relu',
+                   data_format=self.data_format))
         model.add(Dropout(rate=dropout_rate))
 
         for i in range(2, 12):
             model.add(
-                Conv2D(num_filters, other_kernel_size, padding='same', activation='relu'))
+                Conv2D(num_filters, other_kernel_size, padding='same', activation='relu', data_format=self.data_format))
             model.add(Dropout(rate=dropout_rate))
 
         if self.mode == 'policy':
@@ -52,10 +54,10 @@ class AlphaAbalone(Network):
 
         elif self.mode == 'value':
             model.add(
-                Conv2D(num_filters, other_kernel_size, padding='same', activation='relu'))
+                Conv2D(num_filters, other_kernel_size, padding='same', activation='relu', data_format=self.data_format))
             model.add(Dropout(rate=dropout_rate))
             model.add(
-                Conv2D(filters=1, kernel_size=1, padding='same', activation='relu'))
+                Conv2D(filters=1, kernel_size=1, padding='same', activation='relu', data_format=self.data_format))
             model.add(Flatten())
             model.add(Dense(256, activation='relu'))
             model.add(Dense(1, activation='tanh'))

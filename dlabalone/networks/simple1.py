@@ -10,6 +10,7 @@ from dlabalone.networks.base import Network
 class Simple1(Network):
     def __init__(self):
         super().__init__()
+        self.data_format = "channels_first"
 
     def model(self, input_shape, num_classes, optimizer='adam', dropout_rate=0.1):
         model = Sequential()
@@ -21,38 +22,38 @@ class Simple1(Network):
 
     def _layers(self, input_shape, dropout_rate):
         return [
-            ZeroPadding2D((2, 2), input_shape=input_shape),
-            Conv2D(64, (5, 5), padding='valid'),
+            ZeroPadding2D((2, 2), input_shape=input_shape, data_format=self.data_format),
+            Conv2D(64, (5, 5), data_format=self.data_format),
             Activation('relu'),
             Dropout(rate=dropout_rate),
 
-            ZeroPadding2D((2, 2)),
-            Conv2D(64, (5, 5)),
+            ZeroPadding2D((2, 2), data_format=self.data_format),
+            Conv2D(64, (5, 5), data_format=self.data_format),
             Activation('relu'),
             Dropout(rate=dropout_rate),
 
-            ZeroPadding2D((2, 2)),
-            Conv2D(64, (5, 5)),
+            ZeroPadding2D((2, 2), data_format=self.data_format),
+            Conv2D(64, (5, 5), data_format=self.data_format),
             Activation('relu'),
             Dropout(rate=dropout_rate),
 
-            ZeroPadding2D((2, 2)),
-            Conv2D(48, (5, 5)),
+            ZeroPadding2D((2, 2), data_format=self.data_format),
+            Conv2D(48, (5, 5), data_format=self.data_format),
             Activation('relu'),
             Dropout(rate=dropout_rate),
 
-            ZeroPadding2D((2, 2)),
-            Conv2D(48, (5, 5)),
+            ZeroPadding2D((2, 2), data_format=self.data_format),
+            Conv2D(48, (5, 5), data_format=self.data_format),
             Activation('relu'),
             Dropout(rate=dropout_rate),
 
-            ZeroPadding2D((2, 2)),
-            Conv2D(32, (5, 5)),
+            ZeroPadding2D((2, 2), data_format=self.data_format),
+            Conv2D(32, (5, 5), data_format=self.data_format),
             Activation('relu'),
             Dropout(rate=dropout_rate),
 
-            ZeroPadding2D((2, 2)),
-            Conv2D(32, (5, 5)),
+            ZeroPadding2D((2, 2), data_format=self.data_format),
+            Conv2D(32, (5, 5), data_format=self.data_format),
             Activation('relu'),
             Dropout(rate=dropout_rate),
 
