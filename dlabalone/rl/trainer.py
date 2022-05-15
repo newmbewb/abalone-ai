@@ -21,22 +21,22 @@ def predict_convertor_separated_ac(predict_output_batch_list, index):
 
 
 def train_function_separated_ac(models, encoder, dataset):
-    states, actions, rewards, advantages = dataset
+    states, actions, value, advantages = dataset
     model_policy = models[0]
     model_value = models[1]
 
     n = states.shape[0]
     num_moves = encoder.num_moves()
     policy_target = np.zeros((n, num_moves))
-    value_target = np.zeros((n,))
-    sample_weight = np.zeros((n,))
+    value_target = value
+    sample_weight = advantages
     for i in range(n):
-        advantage = advantages[i]
         action = actions[i]
-        reward = rewards[i]
-        sample_weight[i] = advantage
         policy_target[i][action] = 1
-        value_target[i] = reward
+
+    # Normalize
+    m = len(sample_weight) / np.sum(np.abs(sample_weight))
+    sample_weight *= m
 
     model_policy.fit(states, policy_target, sample_weight=sample_weight, batch_size=n, epochs=1, verbose=0)
     model_value.fit(states, value_target, batch_size=n, epochs=1, verbose=0)
@@ -47,7 +47,7 @@ class DataBuffer:
         self.exp_dir = exp_dir
         self.states = None
         self.actions = None
-        self.rewards = None
+        self.values = None
         self.advantages = None
         self.savefile_basename = None
         if self.exp_dir:
@@ -68,12 +68,12 @@ class DataBuffer:
         if self.states is None:
             self.states = buffer.states
             self.actions = buffer.actions
-            self.rewards = buffer.rewards
+            self.values = buffer.values
             self.advantages = buffer.advantages
         else:
             self.states = np.append(self.states, buffer.states, axis=0)
             self.actions = np.append(self.actions, buffer.actions, axis=0)
-            self.rewards = np.append(self.rewards, buffer.rewards, axis=0)
+            self.values = np.append(self.values, buffer.values, axis=0)
             self.advantages = np.append(self.advantages, buffer.advantages, axis=0)
         os.unlink(file)
 
@@ -99,29 +99,29 @@ class DataBuffer:
 
         state_list = []
         action_list = []
-        reward_list = []
+        value_list = []
         advantage_list = []
 
         for index in s:
             state_list.append(self.states[index])
             action_list.append(self.actions[index])
-            reward_list.append(self.rewards[index])
+            value_list.append(self.values[index])
             advantage_list.append(self.advantages[index])
 
         self.states = np.array(state_list)
         self.actions = np.array(action_list)
-        self.rewards = np.array(reward_list)
+        self.values = np.array(value_list)
         self.advantages = np.array(advantage_list)
 
     def get_next_batch(self, batch_size):
         ret = (self.states[:batch_size],
                self.actions[:batch_size],
-               self.rewards[:batch_size],
+               self.values[:batch_size],
                self.advantages[:batch_size],
                )
         self.states = self.states[batch_size:]
         self.actions = self.actions[batch_size:]
-        self.rewards = self.rewards[batch_size:]
+        self.values = self.values[batch_size:]
         self.advantages = self.advantages[batch_size:]
         return ret
 
@@ -160,7 +160,6 @@ def train_ac(models, encoder, predict_convertor, train_fn, exp_dir, model_direct
                                           exp_dir=exp_dir, populate_games=populate_games,
                                           experience_per_file=experience_per_file, compression=compression)
         print(f'Simulation time: {time.time() - time_start} seconds')
-        print(f'total_moves: {stat_list[0]["total_moves"]}')
         episode_count += 1
         total_games += num_games
         cur_move_selector.temperature_down()
@@ -211,11 +210,6 @@ def train_ac(models, encoder, predict_convertor, train_fn, exp_dir, model_direct
                   f'Game count: {total_games}')
 
 
-def _train_model(models, encoder, dataset, train_fn):
-    # states, actions, rewards, advantages = dataset
-    train_fn(models, encoder, dataset)
-
-
 def _get_random_file_list(exp_dir):
     file_list = os.listdir(exp_dir)
     random.shuffle(file_list)
@@ -229,7 +223,6 @@ def _shuffle_experience(exp_dir, experience_per_file, compression=None):
     file_count = 1000
 
     while iter_count < math.log(file_count, 2) + 2:
-        print('shuffle')
         iter_count += 1
         file_count = 0
         for experiences in data_buffer.iter_experience(_get_random_file_list(exp_dir), experience_per_file * 2,
@@ -249,7 +242,7 @@ def _train_on_experience(models, encoder, exp_dir, batch_size, train_fn, compres
     data_buffer = DataBuffer(compression=compression)
     files = map(lambda f: os.path.join(exp_dir, f), os.listdir(exp_dir))
     for experiences in data_buffer.iter_experience(files, batch_size):
-        _train_model(models, encoder, experiences, train_fn)
+        train_fn(models, encoder, experiences)
 
 
 def _clone_models(models):

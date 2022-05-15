@@ -10,7 +10,9 @@ class EpsilonGreedyMoveSelector(MoveSelector):
 
     def __call__(self, encoder, move_probs, legal_moves):
         if random.random() < self.temperature:
-            return random.choice(legal_moves)
+            move = random.choice(legal_moves)
+            index = encoder.encode_move(move)
+            return move, move_probs[index]
 
         legal_moves_index = []
         for move in legal_moves:
@@ -19,5 +21,5 @@ class EpsilonGreedyMoveSelector(MoveSelector):
         s = np.argsort(move_probs)
         for move_index in s[::-1]:
             if move_index in legal_moves_index:
-                return encoder.decode_move_index(move_index)
+                return encoder.decode_move_index(move_index), move_probs[move_index]
         assert False, "Something... Something is wrong!!"

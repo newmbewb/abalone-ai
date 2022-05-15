@@ -31,14 +31,13 @@ if __name__ == '__main__':
     # Load convertor, train_fn, move_selectors
     predict_convertor = predict_convertor_separated_ac
     train_fn = train_function_separated_ac
-    move_selectors = [EpsilonGreedyMoveSelector(temperature=0)]
-    # move_selectors = [ExponentialMoveSelector(temperature=0)]
+    # move_selectors = [EpsilonGreedyMoveSelector(temperature=0.2)]
+    move_selectors = [ExponentialMoveSelector(temperature=0.5)]
 
     # exp_dir & model_directory
     exp_dir = '../data/rl/experience'
     model_directory = '../data/rl/models'
 
-    # train_ac(models, encoder, predict_convertor, train_fn, exp_dir, model_directory,
-    #          move_selectors=move_selectors, num_games=2, comparison_game_count=64, populate_games=False)
     train_ac(models, encoder, predict_convertor, train_fn, exp_dir, model_directory,
-             move_selectors=move_selectors, num_games=256, comparison_game_count=64, populate_games=False)
+             move_selectors=move_selectors, num_games=512, comparison_game_count=64, populate_games=False,
+             compression=None, experience_per_file=32768)

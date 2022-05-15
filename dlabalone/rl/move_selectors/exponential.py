@@ -6,7 +6,7 @@ from dlabalone.rl.move_selectors.base import MoveSelector
 class ExponentialMoveSelector(MoveSelector):
     def __init__(self, temperature=0.5):
         super().__init__(temperature=temperature)
-        self.max_exponential = 1
+        self.max_exponential = 2
 
     def __call__(self, encoder, move_probs, legal_moves):
         move_probs = move_probs ** ((1 - self.temperature) * self.max_exponential)
@@ -24,4 +24,4 @@ class ExponentialMoveSelector(MoveSelector):
         ranked_moves = np.random.choice(candidates, num_moves, replace=False, p=move_probs)
         for move_idx in ranked_moves:
             if move_idx in legal_moves_index:
-                return encoder.decode_move_index(move_idx)
+                return encoder.decode_move_index(move_idx), move_probs[move_idx]

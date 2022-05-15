@@ -174,10 +174,10 @@ def experience_simulation(num_games,
             move_probs, estimated_value = predict_convertor[next_player](predict_output_batch_list, index)
             moves_kill, moves_normal = game.legal_moves(separate_kill=True)
             if len(moves_kill) > 0 and game.can_last_attack():
-                move = moves_kill[0]
+                move, prob = moves_kill[0], 1
             else:
-                move = move_selector[next_player](encoder[next_player], move_probs, moves_kill + moves_normal)
-            game.apply_move(move, predict_input[index], estimated_value, move_probs)
+                move, prob = move_selector[next_player](encoder[next_player], move_probs, moves_kill + moves_normal)
+            game.apply_move(move, predict_input[index], estimated_value, move_probs, prob)
 
         # Remove finished games
         finished_games = []
