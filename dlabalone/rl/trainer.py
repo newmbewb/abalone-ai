@@ -179,8 +179,10 @@ def train_ac(models, encoder, predict_convertor, train_fn, exp_dir, model_direct
         # Evaluate new model
         print('Evaluating...')
         time_start = time.time()
-        wins, losses = _evaluate_model(models, models_prev, encoder, predict_convertor, comparison_game_count)
+        wins, losses, draws = _evaluate_model(models, models_prev, encoder, predict_convertor, comparison_game_count,
+                                             thread_count)
         print(f'Evaluating time: {time.time() - time_start} seconds')
+        print(f'Result: Wins/Losses/Draws = {wins}/{losses}/{draws}')
 
         completed_game_count = wins + losses
         win_rate = wins / completed_game_count
@@ -258,6 +260,7 @@ def _clone_models(models):
 def _evaluate_model(models, models_prev, encoder, predict_convertor, num_games):
     wins = 0
     losses = 0
+    draws = 0
     selector = ExponentialMoveSelector(temperature=0)
     stat_list_black = experience_simulation(num_games // 2,
                                             models, models_prev,
@@ -268,18 +271,24 @@ def _evaluate_model(models, models_prev, encoder, predict_convertor, num_games):
     for stat in stat_list_black:
         if stat['winner'] == Player.black:
             wins += 1
-        else:
+        elif stat['winner'] == Player.white:
             losses += 1
+        else:
+            draws += 1
+
     stat_list_white = experience_simulation(num_games // 2,
                                             models_prev, models,
                                             encoder, encoder,
                                             selector, selector,
-                                            predict_convertor, predict_convertor)
+                                            predict_convertor, predict_convertor,
+                                            populate_games=False)
     for stat in stat_list_white:
         if stat['winner'] == Player.white:
             wins += 1
-        else:
+        elif stat['winner'] == Player.black:
             losses += 1
-    return wins, losses
+        else:
+            draws += 1
+    return wins, losses, draws
 
 

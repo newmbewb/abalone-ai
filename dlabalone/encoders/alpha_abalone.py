@@ -24,10 +24,13 @@ class AlphaAbaloneEncoder(Encoder):
     def name(self):
         return type(self).__name__
 
-    def encode_board(self, game_board, next_player=Player.black):
+    def encode_board(self, game_board, next_player=Player.black, **kwargs):
         game = GameState(game_board, next_player)
         push_moves = []
-        kill_moves, normal_moves = game.legal_moves(separate_kill=True, push_moves=push_moves)
+        if 'kill_moves' in kwargs:
+            kill_moves = kwargs['kill_moves']
+        else:
+            kill_moves, normal_moves = game.legal_moves(separate_kill=True, push_moves=push_moves)
         player_attack_plains = self._generate_player_attack_plains(kill_moves, push_moves)
         opp_attack_plains = self._generate_opp_attack_plains(game_board, next_player)
         basic_plains = self._generate_basic_plains(game_board, next_player)

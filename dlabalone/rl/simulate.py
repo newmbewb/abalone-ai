@@ -160,8 +160,11 @@ def experience_simulation(num_games,
         game_steps += 1
         # Get encoded boards
         predict_input = np.zeros((len(game_list),) + encoder[next_player].shape())
+        moves = []
         for index, game in enumerate(game_list):
-            encoded = encoder[next_player].encode_board(game.board, game.next_player)
+            moves_kill, moves_normal = game.legal_moves(separate_kill=True)
+            moves.append((moves_kill, moves_normal))
+            encoded = encoder[next_player].encode_board(game.board, game.next_player, moves_kill=moves_kill)
             predict_input[index] = encoded
 
         # Predict
@@ -172,7 +175,7 @@ def experience_simulation(num_games,
         # Select move & apply
         for index, game in enumerate(game_list):
             move_probs, estimated_value = predict_convertor[next_player](predict_output_batch_list, index)
-            moves_kill, moves_normal = game.legal_moves(separate_kill=True)
+            moves_kill, moves_normal = moves[index]
             if len(moves_kill) > 0 and game.can_last_attack():
                 move, prob = moves_kill[0], 1
             else:
