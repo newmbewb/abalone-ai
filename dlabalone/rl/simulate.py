@@ -39,12 +39,20 @@ class ExperienceGameState(object):
         if action != np.argmax(move_probs):
             self.stat['new_moves'] += 1
 
-    def apply_move(self, move, encoded, estimated_value, move_probs):
+    def apply_move(self, move, encoded, estimated_value, move_probs, probability):
         self.step_count += 1
         next_player = self.game_state.next_player
         action = self.encoder[next_player].encode_move(move)
+        # Save next player's record
         for collector in self.collectors[next_player]:
-            collector.record_decision(encoded, action, estimated_value)
+            collector.record_decision(encoded, action, estimated_value, probability)
+            if self.populator is not None:
+                encoded = self.populator.rotate_numpy_encoded(encoded)
+                move = self.populator.rotate_move(move, 1)
+                action = self.encoder[next_player].encode_move(move)
+        # Save next player's record
+        for collector in self.collectors[next_player.other]:
+            collector.record_opp_probability(probability)
             if self.populator is not None:
                 encoded = self.populator.rotate_numpy_encoded(encoded)
                 move = self.populator.rotate_move(move, 1)
@@ -116,8 +124,8 @@ def experience_simulation(num_games,
                           encoder_black, encoder_white,
                           move_selector_black, move_selector_white,
                           predict_convertor_black, predict_convertor_white,
-                          exp_dir=None, black_name='black', white_name='white', populate_games=True,
-                          experience_per_file=65536):
+                          exp_dir=None, populate_games=True,
+                          experience_per_file=65536, compression=None):
     # Save parameters
     encoder = {Player.black: encoder_black, Player.white: encoder_white}
     models = {Player.black: models_black, Player.white: models_white}
@@ -135,7 +143,7 @@ def experience_simulation(num_games,
     # Initialize games
     game_list = []
     if exp_dir:
-        saver = ExperienceSaver(exp_dir, experience_per_file)
+        saver = ExperienceSaver(exp_dir, experience_per_file, compression=compression)
     else:
         saver = None
     for index in range(num_games):

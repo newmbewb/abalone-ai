@@ -43,7 +43,7 @@ def train_function_separated_ac(models, encoder, dataset):
 
 
 class DataBuffer:
-    def __init__(self, exp_dir=None):
+    def __init__(self, exp_dir=None, compression=None):
         self.exp_dir = exp_dir
         self.states = None
         self.actions = None
@@ -53,6 +53,7 @@ class DataBuffer:
         if self.exp_dir:
             self.savefile_basename = os.path.join(self.exp_dir, f'packed_experiences_{random.random()}_%d.h5')
         self.savefile_index = 0
+        self.compression = compression
 
     def consume_h5file(self, file):
         fail = False
@@ -129,12 +130,13 @@ class DataBuffer:
         self.savefile_index += 1
         with h5py.File(filename, 'w') as experience_outf:
             exp_buffer = ExperienceBuffer(*experiences)
-            exp_buffer.serialize(experience_outf)
+            exp_buffer.serialize(experience_outf, compression=self.compression)
 
 
 def train_ac(models, encoder, predict_convertor, train_fn, exp_dir, model_directory,
              max_generation=10000, num_games=1024, comparison_game_count=512, p_value=0.05,
-             move_selectors=None, batch_size=1024, model_name='model', populate_games=True, experience_per_file=65536):
+             move_selectors=None, batch_size=1024, model_name='model', populate_games=True, experience_per_file=65536,
+             compression=None):
     if move_selectors is None:
         move_selectors = [ExponentialMoveSelector()]
 
@@ -156,25 +158,23 @@ def train_ac(models, encoder, predict_convertor, train_fn, exp_dir, model_direct
                                           cur_move_selector, cur_move_selector,
                                           predict_convertor, predict_convertor,
                                           exp_dir=exp_dir, populate_games=populate_games,
-                                          experience_per_file=experience_per_file)
+                                          experience_per_file=experience_per_file, compression=compression)
         print(f'Simulation time: {time.time() - time_start} seconds')
         print(f'total_moves: {stat_list[0]["total_moves"]}')
         episode_count += 1
         total_games += num_games
         cur_move_selector.temperature_down()
-        print('Sleeping~!!!!!')
-        time.sleep(10)
 
         # Shuffle data
         print(f'Shuffling data...')
         time_start = time.time()
-        _shuffle_experience(exp_dir, experience_per_file)
+        _shuffle_experience(exp_dir, experience_per_file, compression=compression)
         print(f'Shuffling data time: {time.time() - time_start} seconds')
 
         # Train games
         print('Training...')
         time_start = time.time()
-        _train_on_experience(models, encoder, exp_dir, batch_size, train_fn)
+        _train_on_experience(models, encoder, exp_dir, batch_size, train_fn, compression=compression)
         print(f'Training time: {time.time() - time_start} seconds')
 
         # Evaluate new model
@@ -222,13 +222,14 @@ def _get_random_file_list(exp_dir):
     return map(lambda f: os.path.join(exp_dir, f), file_list)
 
 
-def _shuffle_experience(exp_dir, experience_per_file):
+def _shuffle_experience(exp_dir, experience_per_file, compression=None):
     # Pack experiences into a single file
-    data_buffer = DataBuffer(exp_dir=exp_dir)
+    data_buffer = DataBuffer(exp_dir=exp_dir, compression=compression)
     iter_count = 0
     file_count = 1000
 
     while iter_count < math.log(file_count, 2) + 2:
+        print('shuffle')
         iter_count += 1
         file_count = 0
         for experiences in data_buffer.iter_experience(_get_random_file_list(exp_dir), experience_per_file * 2,
@@ -244,8 +245,8 @@ def _shuffle_experience(exp_dir, experience_per_file):
             file_count += 2
 
 
-def _train_on_experience(models, encoder, exp_dir, batch_size, train_fn):
-    data_buffer = DataBuffer()
+def _train_on_experience(models, encoder, exp_dir, batch_size, train_fn, compression=None):
+    data_buffer = DataBuffer(compression=compression)
     files = map(lambda f: os.path.join(exp_dir, f), os.listdir(exp_dir))
     for experiences in data_buffer.iter_experience(files, batch_size):
         _train_model(models, encoder, experiences, train_fn)
