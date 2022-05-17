@@ -42,6 +42,8 @@ class NetworkNaiveBot(Agent):
                 assert False, 'Wrong selector name'
         elif isinstance(selector, MoveSelector):
             self.selector = selector
+        else:
+            assert False, "selector should be string or MoveSelector"
 
     def select_move(self, game_state: GameState):
         assert not game_state.is_over()
