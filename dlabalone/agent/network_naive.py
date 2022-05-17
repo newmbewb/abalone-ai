@@ -45,14 +45,12 @@ class NetworkNaiveBot(Agent):
 
     def select_move(self, game_state: GameState):
         assert not game_state.is_over()
-        print('select move start')
         moves_kill, moves_normal = game_state.legal_moves(separate_kill=True)
         if len(moves_kill) > 0 and self.can_last_attack(game_state):
             return moves_kill[0]
         encoded_state = self.encoder.encode_board(game_state.board, game_state.next_player, moves_kill=moves_kill)
         move_probs = self.model.predict(np.array([encoded_state]))[0]
         move, prob = self.selector(self.encoder, move_probs, moves_kill + moves_normal)
-        print('select move end')
         return move
 
     @staticmethod

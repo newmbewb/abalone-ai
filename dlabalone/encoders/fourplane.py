@@ -32,7 +32,7 @@ class FourPlaneEncoder(Encoder):
                 map_opp_player[y, x] = 1
         plane_list = [map_next_player, map_opp_player, self.valid_map, self.invalid_map]
         if self.data_format == 'channels_first':
-            return np.arrray(plane_list)
+            return np.array(plane_list)
         elif self.data_format == 'channels_last':
             return np.dstack(plane_list)
         else:

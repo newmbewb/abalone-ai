@@ -45,8 +45,11 @@ def test1():
 
 
 def run_game(idx, bot_pair):
-    print('run game start')
     bot_black, bot_white = bot_pair
+    if hasattr(bot_black, '__call__'):
+        bot_black = bot_black()
+    if hasattr(bot_white, '__call__'):
+        bot_white = bot_white()
     game = GameState.new_game(5)
     step = 0
     is_draw = False
@@ -96,9 +99,22 @@ def compare_bot(bot1, bot2, run_iter=100, threads=None):
         win_count = winner_list.count(name)
         print("%s: %d/%d (%3.3f%%)" % (name, win_count, run_iter, win_count / run_iter * 100))
     print(f'Total steps: {total_step}')
+
+    if hasattr(bot1, '__call__'):
+        bot1 = bot1()
+    if hasattr(bot2, '__call__'):
+        bot2 = bot2()
+
     print_win_rate(bot1.name)
     print_win_rate(bot2.name)
     print_win_rate(draw_name)
+
+
+def network_bot_generator():
+    encoder = get_encoder_by_name('fourplane', 5, None, data_format='channels_last')
+    return NetworkNaiveBot(
+        encoder, '../../data/checkpoints/models/ACSimple1Policy_dropout0.1_FourPlaneEncoder_channels_last_epoch_13.h5',
+        selector='greedy')
 
 
 if __name__ == '__main__':
@@ -117,13 +133,9 @@ if __name__ == '__main__':
     if False:
         test1()
     else:
-        encoder = get_encoder_by_name('fourplane', 5, '')
-        # bot_A = NetworkNaiveBot(
-        #     encoder, '../../data/checkpoints/models/ACSimple1Policy_dropout0.1_FourPlaneEncoder_epoch_16.h5',
-        #     selector='greedy')
         bot_A = MCTSBot(name='MCTS20000r0.01t', num_rounds=4000, temperature=0.001)
-        bot_B = MCTSBot(name='MCTS20000r0.01t', num_rounds=4000, temperature=0.001)
-        compare_bot(bot_A, bot_B, run_iter=10, threads=3)
+        bot_B = network_bot_generator
+        compare_bot(bot_A, bot_B, run_iter=10, threads=2)
 
     profiler.end('game')
     profiler.print('game')
