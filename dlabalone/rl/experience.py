@@ -101,7 +101,7 @@ class ExperienceCollector:
             estimated_value = self._current_episode_estimated_values[turn]
             new_value = (1 - pp) * estimated_value + pp * last_new_value
             target_value.append(new_value)
-            advantage.append(prob_opp * (last_new_value - estimated_value))
+            advantage.append(prob_opp * (last_new_value - new_value))
             last_new_value = new_value
 
         self._current_episode_states = []

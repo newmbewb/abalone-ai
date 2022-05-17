@@ -3,12 +3,18 @@ import os
 
 from dlabalone.ablboard import GameState
 from dlabalone.abltypes import Player
+from dlabalone.agent.network_naive import NetworkNaiveBot
 from dlabalone.agent.random_kill_first import RandomKillBot
 from dlabalone.agent.alphabeta import AlphaBetaBot
 from dlabalone.agent.mcts import MCTSBot
+from dlabalone.encoders.base import get_encoder_by_name
 from dlabalone.utils import print_board, encode_board_str, profiler
 import cProfile
 import random
+
+
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
 draw_name = 'Draw'
@@ -39,6 +45,7 @@ def test1():
 
 
 def run_game(idx, bot_pair):
+    print('run game start')
     bot_black, bot_white = bot_pair
     game = GameState.new_game(5)
     step = 0
@@ -106,44 +113,20 @@ if __name__ == '__main__':
     ####################################
     profiler.start('game')
 
-    if True:
-    # if False:
+    # if True:
+    if False:
         test1()
     else:
-        bot_A = AlphaBetaBot(name='AB3d', depth=3)
+        encoder = get_encoder_by_name('fourplane', 5, '')
+        # bot_A = NetworkNaiveBot(
+        #     encoder, '../../data/checkpoints/models/ACSimple1Policy_dropout0.1_FourPlaneEncoder_epoch_16.h5',
+        #     selector='greedy')
+        bot_A = MCTSBot(name='MCTS20000r0.01t', num_rounds=4000, temperature=0.001)
         bot_B = MCTSBot(name='MCTS20000r0.01t', num_rounds=4000, temperature=0.001)
-        compare_bot(bot_A, bot_B, run_iter=10, threads=4)
+        compare_bot(bot_A, bot_B, run_iter=10, threads=3)
 
     profiler.end('game')
     profiler.print('game')
-    # ####################################
-    # profiler.start('game')
-    #
-    # bot_A = MCTSBot(name='MCTS10000r0.5t',   num_rounds=10000, temperature=0.1)
-    # bot_B = MCTSBot(name='MCTS10000r0.1t',   num_rounds=10000, temperature=0.01)
-    # compare_bot(bot_A, bot_B, run_iter=10, threads=3)
-    #
-    # profiler.end('game')
-    # profiler.print('game')
-    ####################################
-    # profiler.start('game')
-    #
-    # bot_A = MCTSBot(name='MCTS10000r0.1t',  num_rounds=10000, temperature=0.1)
-    # bot_B = MCTSBot(name='MCTS10000r0.05t',  num_rounds=10000, temperature=0.05)
-    # compare_bot(bot_A, bot_B, run_iter=50, threads=4)
-    #
-    # profiler.end('game')
-    # profiler.print('game')
-    ####################################
-    # profiler.start('game')
-    #
-    # bot_A = MCTSBot(name='MCTS20000r0.01t',  num_rounds=20000, temperature=0.01)
-    # bot_B = MCTSBot(name='MCTS40000r0.01t',  num_rounds=40000, temperature=0.01)
-    # compare_bot(bot_A, bot_B, run_iter=10, threads=3)
-    #
-    # profiler.end('game')
-    # profiler.print('game')
-    ####################################
 
     if enable_profile:
         pr.disable()

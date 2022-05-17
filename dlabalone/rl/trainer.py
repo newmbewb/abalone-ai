@@ -21,7 +21,7 @@ def predict_convertor_separated_ac(predict_output_batch_list, index):
     return move_probs, estimated_value
 
 
-def train_function_separated_ac(models, encoder, dataset):
+def train_function_separated_ac(models, encoder, dataset, history):
     states, actions, value, advantages = dataset
     model_policy = models[0]
     model_value = models[1]
@@ -39,8 +39,27 @@ def train_function_separated_ac(models, encoder, dataset):
     m = len(sample_weight) / np.sum(np.abs(sample_weight))
     sample_weight *= m
 
-    model_policy.fit(states, policy_target, sample_weight=sample_weight, batch_size=n, epochs=1, verbose=0)
-    model_value.fit(states, value_target, batch_size=n, epochs=1, verbose=0)
+    history_policy = model_policy.fit(states, policy_target, sample_weight=sample_weight, batch_size=n, epochs=1,
+                                      verbose=0)
+    history_value = model_value.fit(states, value_target, batch_size=n, epochs=1, verbose=0)
+    print(history_value.history.keys())
+    print(history_value.history.keys())
+
+    # Save history
+    policy_loss = history.get('policy_loss', [])
+    policy_accuracy = history.get('policy_accuracy', [])
+    value_loss = history.get('value_loss', [])
+    value_mse = history.get('value_mse', [])
+
+    policy_loss += history_policy.history['loss']
+    policy_accuracy += history_policy.history['accuracy']
+    value_loss += history_value.history['loss']
+    value_mse += history_value.history['mean_squared_error']
+
+    history['policy_loss'] = policy_loss
+    history['policy_accuracy'] = policy_accuracy
+    history['value_loss'] = value_loss
+    history['value_mse'] = value_mse
 
 
 class DataBuffer:
@@ -220,11 +239,11 @@ def train_ac(load_models, encoder, predict_convertor, train_fn, exp_dir, model_d
 
             episode_count = 0
             generation += 1
-        elif wins / completed_game_count < 0.5 and current_p_value < p_value:
-            print(f'Too low win rate! Win rate: {win_rate*100:.3f} % (P-value: {current_p_value:.5f})\n' +
-                  f'Revert to previous model..')
-            episode_count = 0
-            models = load_models()
+        # elif wins / completed_game_count < 0.5 and current_p_value < p_value:
+        #     print(f'Too low win rate! Win rate: {win_rate*100:.3f} % (P-value: {current_p_value:.5f})\n' +
+        #           f'Revert to previous model..')
+        #     episode_count = 0
+        #     models = load_models()
         else:
             print(f'Win rate: {win_rate*100:.3f} % (P-value: {current_p_value:.5f}). Keep learning. ' +
                   f'Game count: {total_games}')
@@ -261,8 +280,14 @@ def _shuffle_experience(exp_dir, experience_per_file, compression=None):
 def _train_on_experience(models, encoder, exp_dir, batch_size, train_fn, compression=None):
     data_buffer = DataBuffer(compression=compression)
     files = map(lambda f: os.path.join(exp_dir, f), os.listdir(exp_dir))
+    history = {}
     for experiences in data_buffer.iter_experience(files, batch_size):
-        train_fn(models, encoder, experiences)
+        train_fn(models, encoder, experiences, history)
+    for key in history:
+        print(f'{key:10s}', end='')
+        for value in history[key]:
+            print(f'{value:10.4f}', end='')
+        print('')
 
 
 def _evaluate_model(models, models_prev, encoder, predict_convertor, num_games):

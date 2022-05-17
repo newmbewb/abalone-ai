@@ -9,11 +9,11 @@ from keras.losses import Huber
 from dlabalone.networks.base import Network
 
 
-class ACSimple(Network):
-    def __init__(self, mode, dropout_rate=0.1):
+class ACSimple1(Network):
+    def __init__(self, mode, dropout_rate=0.1, data_format="channels_first"):
         self.mode = mode
         self.dropout_rate = dropout_rate
-        self.data_format = "channels_first"
+        self.data_format = data_format
         if mode == 'policy':
             name = f"ACSimple1Policy_dropout{dropout_rate}"
         elif mode == 'value':
@@ -33,9 +33,6 @@ class ACSimple(Network):
         return model
 
     def _model(self, input_shape, num_classes,
-               num_filters=192,
-               first_kernel_size=5,
-               other_kernel_size=3,
                dropout_rate=0.1):
 
         model = Sequential()

@@ -8,9 +8,9 @@ from dlabalone.networks.base import Network
 
 
 class Simple1(Network):
-    def __init__(self):
+    def __init__(self, data_format="channels_first"):
         super().__init__()
-        self.data_format = "channels_first"
+        self.data_format = data_format
 
     def model(self, input_shape, num_classes, optimizer='adam', dropout_rate=0.1):
         model = Sequential()

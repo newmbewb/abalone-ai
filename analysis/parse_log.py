@@ -1,18 +1,31 @@
 import re
 
 if __name__ == '__main__':
-    logname = 'log/Simple1_FourPlaneEncoder_adam_dropout0.1.txt'
+    logname = 'log/ACSimple1Value_dropout0.1_FourPlaneEncoder_lr0.1.txt'
 
-    p = re.compile(r'.*loss: (?P<loss>[0-9\.]+) - accuracy: (?P<accuracy>[0-9\.]+) - val_loss: (?P<val_loss>[0-9\.]+) - val_accuracy: (?P<val_accuracy>[0-9\.]+)')
+    p1 = re.compile(
+        r'.*loss: (?P<loss>[0-9\.]+) - '
+        r'accuracy: (?P<accuracy>[0-9\.]+) - '
+        r'val_loss: (?P<val_loss>[0-9\.]+) - '
+        r'val_accuracy: (?P<val_accuracy>[0-9\.]+)')
+    p2 = re.compile(
+        r'.*loss: (?P<loss>[0-9\.]+) - '
+        r'mean_squared_error: (?P<mean_squared_error>[0-9\.]+) - '
+        r'val_loss: (?P<val_loss>[0-9\.]+) - '
+        r'val_mean_squared_error: (?P<val_mean_squared_error>[0-9\.]+)')
     fd = open(logname, 'r')
-    val_accuracy = []
-    accuracy = []
+    val_metric = []
+    metric = []
     for line in fd:
-        m = p.match(line)
+        m = p1.match(line)
         if m:
-            val_accuracy.append(m.group('val_accuracy'))
-            accuracy.append(m.group('accuracy'))
-    print('val_accuracy')
-    print(','.join(val_accuracy))
-    print('accuracy')
-    print(','.join(accuracy))
+            val_metric.append(m.group('val_accuracy'))
+            metric.append(m.group('accuracy'))
+        m = p2.match(line)
+        if m:
+            val_metric.append(m.group('val_mean_squared_error'))
+            metric.append(m.group('mean_squared_error'))
+    print('val_metric')
+    print(','.join(val_metric))
+    print('metric')
+    print(','.join(metric))

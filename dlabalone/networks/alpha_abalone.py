@@ -10,9 +10,9 @@ from dlabalone.networks.base import Network
 
 
 class AlphaAbalone(Network):
-    def __init__(self, mode):
+    def __init__(self, mode, data_format="channels_first"):
         self.mode = mode
-        self.data_format = "channels_first"
+        self.data_format = data_format
         if mode == 'policy':
             name = "AlphaAbalonePolicy"
         elif mode == 'value':

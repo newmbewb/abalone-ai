@@ -11,15 +11,17 @@ from dlabalone.utils import load_file_board_move_pair
 
 
 class AlphaAbaloneEncoder(Encoder):
-    def __init__(self, board_size, mode):
-        super().__init__(board_size)
+    def __init__(self, board_size, mode, data_format="channels_first"):
+        super().__init__(board_size, mode)
         self.num_planes = 45
         self.valid_map = np.zeros((self.max_xy, self.max_xy))
         self.invalid_map = np.ones((self.max_xy, self.max_xy))
-        self.mode = mode
+        self.data_format = data_format
         for x, y in Board.valid_grids:
             self.valid_map[y, x] = 1
             self.valid_map[y, x] = 0
+        assert data_format == "channels_first" or data_format == "channels_last", \
+            "data_format should be channels_first or channels_last"
 
     def name(self):
         return type(self).__name__
@@ -34,19 +36,25 @@ class AlphaAbaloneEncoder(Encoder):
         player_attack_plains = self._generate_player_attack_plains(kill_moves, push_moves)
         opp_attack_plains = self._generate_opp_attack_plains(game_board, next_player)
         basic_plains = self._generate_basic_plains(game_board, next_player)
-        return np.concatenate([player_attack_plains, opp_attack_plains, basic_plains])
+        plane_list = player_attack_plains + opp_attack_plains + basic_plains
+        if self.data_format == 'channels_first':
+            return np.arrray(plane_list)
+        elif self.data_format == 'channels_last':
+            return np.dstack(plane_list)
+        else:
+            return None
 
     def _generate_basic_plains(self, board, next_player=Player.black):
-        board_matrix = np.zeros((4, self.max_xy, self.max_xy))
+        map_next_player = np.zeros((self.max_xy, self.max_xy))
+        map_opp_player = np.zeros((self.max_xy, self.max_xy))
         for point, player in board.grid.items():
             x, y = point
             if player == next_player:
-                board_matrix[0, y, x] = 1
+                map_next_player[y, x] = 1
             else:
-                board_matrix[1, y, x] = 1
-        board_matrix[2] = self.valid_map
-        board_matrix[3] = self.invalid_map
-        return board_matrix
+                map_opp_player[y, x] = 1
+
+        return [map_next_player, map_opp_player, self.valid_map, self.invalid_map]
 
     def _generate_player_attack_plains(self, kill_moves, push_moves):
         # Init plains
@@ -71,7 +79,7 @@ class AlphaAbaloneEncoder(Encoder):
                 plain_kill_list.append(plain_kill[key])
                 plain_push_list.append(plain_push[key])
 
-        return np.concatenate(plain_kill_list + plain_push_list)
+        return plain_kill_list + plain_push_list
 
     def _generate_opp_attack_plains(self, board, next_player=Player.black):
         plain_opp_sumito_stones = np.zeros((1, self.max_xy, self.max_xy))
@@ -102,69 +110,8 @@ class AlphaAbaloneEncoder(Encoder):
             for direction in Direction:
                 key = length, direction.value
                 plain_vuln_points_list.append(plain_vuln_points[key])
-        return np.concatenate([plain_opp_sumito_stones, plain_danger_stones, plain_danger_points] +
-                              plain_vuln_stones_list +
-                              plain_vuln_points_list)
-
-    @staticmethod
-    def encode_data_worker(encoder, batch_size, filename, q_infile, q_ggodari, index, lock):
-        num_classes = encoder.num_moves()
-        feature_list = []
-        policy_list = []
-        value_list = []
-        while True:
-            try:
-                file = q_infile.get_nowait()
-            except queue.Empty:
-                break
-            pair_list = load_file_board_move_pair(file, with_value=True)
-            print(f'Encoding {file}')
-            for board, move, advantage, value in pair_list:
-                move_num = encoder.encode_move(move)
-                policy = np.zeros(num_classes)
-                policy[move_num] = advantage
-                feature = encoder.encode_board(board)
-
-                feature = np.expand_dims(feature, axis=0)
-                policy = np.expand_dims(policy, axis=0)
-                value = np.expand_dims(value, axis=0)
-                feature_list.append(feature)
-                policy_list.append(policy)
-                value_list.append(value)
-                if len(feature_list) == batch_size:
-                    features = np.concatenate(feature_list, axis=0)
-                    policies = np.concatenate(policy_list, axis=0)
-                    values = np.concatenate(value_list, axis=0)
-                    feature_list = []
-                    policy_list = []
-                    value_list = []
-                    with lock:
-                        idx = index.value
-                        index.value += 1
-                    np.savez_compressed(filename % idx, feature=features, policy=policies, value=values)
-
-        q_ggodari.put((feature_list, policy_list, value_list))
-        return
-
-    @staticmethod
-    def ggodari_merger(ggodari_list, batch_size, out_filename, index):
-        feature_list = []
-        policy_list = []
-        value_list = []
-        for feature, policy, value in ggodari_list:
-            feature_list += feature
-            policy_list += policy
-            value_list += value
-
-        while len(feature_list) > 0:
-            features = np.concatenate(feature_list[:batch_size], axis=0)
-            policies = np.concatenate(policy_list[:batch_size], axis=0)
-            values = np.concatenate(value_list[:batch_size], axis=0)
-            feature_list = feature_list[batch_size:]
-            policy_list = policy_list[batch_size:]
-            value_list = value_list[batch_size:]
-            np.savez_compressed(out_filename % index, feature=features, policy=policies, value=values)
-            index += 1
+        return [plain_opp_sumito_stones, plain_danger_stones, plain_danger_points] + plain_vuln_stones_list + \
+               plain_vuln_points_list
 
     @staticmethod
     def _move_list2np_arr(np_arr, move_list):
@@ -182,21 +129,14 @@ class AlphaAbaloneEncoder(Encoder):
             x, y = stone
             np_arr[0, y, x] = 1
 
-    def load(self, file):
-        loaded = np.load(file)
-        return loaded['feature'], loaded[self.mode]
-
     def shape(self):
-        return self.num_planes, self.max_xy, self.max_xy
-
-    def label_shape(self):
-        if self.mode == 'policy':
-            return self.num_moves(),
-        elif self.mode == 'value':
-            return 1,
+        if self.data_format == 'channels_first':
+            return self.num_planes, self.max_xy, self.max_xy
+        elif self.data_format == 'channels_last':
+            return self.max_xy, self.max_xy, self.num_planes
         else:
-            assert False, "Wrong mode"
+            return None
 
 
-def create(board_size, mode):
-    return AlphaAbaloneEncoder(board_size, mode)
+def create(board_size, mode, **kwargs):
+    return AlphaAbaloneEncoder(board_size, mode, **kwargs)

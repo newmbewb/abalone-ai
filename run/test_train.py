@@ -19,32 +19,22 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 if __name__ == '__main__':
     multiprocessing.freeze_support()
     mode = 'policy'
-    # optimizer = SGD(learning_rate=0.05)
+    # optimizer = SGD(learning_rate=0.1)
     optimizer = 'adam'
     dropout_rate = 0.1
-    encoder = get_encoder_by_name('alpha_abalone', 5, mode)
+    # encoder = get_encoder_by_name('alpha_abalone', 5, mode)
+    encoder = get_encoder_by_name('fourplane', 5, mode, data_format="channels_last")
     generator = DataGenerator(encoder, 1024, '../data/data_with_value/dataset', '../data/encoded_data', 0.2)
-    # generator = DataGenerator(encoder, 512, '../data/data_with_value/dataset', '../data/encoded_data', 0.2)
-    # encoder = get_encoder_by_name('fourplane', 5)
-    # generator = DataGenerator(encoder, 4096, '../data/dataset', '../data/encoded_data', 0.2)
 
-
-    # generator = DataGeneratorMock(encoder, 512, 1000, 250)
-    # dataset = tf.data.Dataset.from_generator(lambda: generator.generate('train'), (tf.int8, tf.int8),
-    #                                          (encoder.shape(), (encoder.num_moves(), )))
-    # dataset = dataset.batch(256)
-
-    # model_generator = alpha_abalone.AlphaAbalone(mode)
-    model_generator = ac_simple1.ACSimple(mode, dropout_rate=dropout_rate)
-    # model_generator = simple1.Simple1()
-    # model = model_generator.model(encoder.shape(), encoder.num_moves(), optimizer=SGD(learning_rate=1))
+    model_generator = ac_simple1.ACSimple1(mode, dropout_rate=dropout_rate, data_format="channels_last")
     model = model_generator.model(encoder.shape(), encoder.num_moves(), optimizer=optimizer)
-    model.summary()
-    # model = load_model('../data/checkpoints/ACSimple1Policy_dropout0.1_AlphaAbaloneEncoder_epoch_1.h5')
+    # model = load_model('../data/checkpoints/backup/ACSimple1Policy_dropout0.1_AlphaAbaloneEncoder_epoch_14.h5')
 
     # Make network name
+    model.summary()
     network_name = f'{model_generator.name()}_{encoder.name()}'
     print(network_name)
+    print(f'optimizer: {optimizer}')
     epochs = 100
     model.fit_generator(
         generator=generator.generate('train'),
