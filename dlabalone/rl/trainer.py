@@ -11,6 +11,7 @@ from scipy.stats import binom_test
 
 from dlabalone.abltypes import Player
 from dlabalone.rl.experience import load_experience, ExperienceBuffer
+from dlabalone.rl.move_selectors.eps_greedy import EpsilonGreedyMoveSelector
 from dlabalone.rl.move_selectors.exponential import ExponentialMoveSelector
 from dlabalone.rl.simulate import experience_simulation
 
@@ -21,15 +22,26 @@ def predict_convertor_separated_ac(predict_output_batch_list, index):
     return move_probs, estimated_value
 
 
-def train_function_separated_ac(models, encoder, dataset, history):
+def train_function_separated_ac(models, encoder, dataset, history, remove_negative=False):
     states, actions, value, advantages = dataset
     model_policy = models[0]
     model_value = models[1]
 
+    # Train value
     n = states.shape[0]
+    value_target = value
+    history_value = model_value.fit(states, value_target, batch_size=n, epochs=1, verbose=0)
+
+    # Train policy: Remove negative weights first
+    if remove_negative:
+        states = states[advantages > 0]
+        n = states.shape[0]
+        actions = actions[advantages > 0]
+        advantages = advantages[advantages > 0]
+
     num_moves = encoder.num_moves()
     policy_target = np.zeros((n, num_moves))
-    value_target = value
+
     sample_weight = advantages
     for i in range(n):
         action = actions[i]
@@ -38,12 +50,8 @@ def train_function_separated_ac(models, encoder, dataset, history):
     # Normalize
     m = len(sample_weight) / np.sum(np.abs(sample_weight))
     sample_weight *= m
-
     history_policy = model_policy.fit(states, policy_target, sample_weight=sample_weight, batch_size=n, epochs=1,
                                       verbose=0)
-    history_value = model_value.fit(states, value_target, batch_size=n, epochs=1, verbose=0)
-    print(history_value.history.keys())
-    print(history_value.history.keys())
 
     # Save history
     policy_loss = history.get('policy_loss', [])
@@ -172,6 +180,7 @@ def train_ac(load_models, encoder, predict_convertor, train_fn, exp_dir, model_d
     total_games = 0
     models_prev = load_models()
     models = load_models()
+    move_selector_greedy = EpsilonGreedyMoveSelector(temperature=0)
     for _ in range(max_generation):
         cur_move_selector = move_selectors[move_selector_index]
         move_selector_index = (move_selector_index + 1) % len(move_selectors)
@@ -182,7 +191,7 @@ def train_ac(load_models, encoder, predict_convertor, train_fn, exp_dir, model_d
         stat_list = experience_simulation(num_games,
                                           models, models,
                                           encoder, encoder,
-                                          cur_move_selector, cur_move_selector,
+                                          cur_move_selector, move_selector_greedy,
                                           predict_convertor, predict_convertor,
                                           exp_dir=exp_dir, populate_games=populate_games,
                                           experience_per_file=experience_per_file, compression=compression)
@@ -211,6 +220,8 @@ def train_ac(load_models, encoder, predict_convertor, train_fn, exp_dir, model_d
         print(f'Result: Wins/Losses/Draws = {wins}/{losses}/{draws}')
 
         completed_game_count = wins + losses
+        if completed_game_count == 0:
+            continue
         win_rate = wins / completed_game_count
         current_p_value = binom_test(wins, completed_game_count, 0.5)
         if wins / completed_game_count > 0.5 and current_p_value < p_value:
@@ -283,11 +294,13 @@ def _train_on_experience(models, encoder, exp_dir, batch_size, train_fn, compres
     history = {}
     for experiences in data_buffer.iter_experience(files, batch_size):
         train_fn(models, encoder, experiences, history)
+    print('=' * 80)
     for key in history:
-        print(f'{key:10s}', end='')
+        print(f'{key:18s}', end='')
         for value in history[key]:
-            print(f'{value:10.4f}', end='')
+            print(f' {value:8.4f}', end='')
         print('')
+    print('=' * 80)
 
 
 def _evaluate_model(models, models_prev, encoder, predict_convertor, num_games):

@@ -10,7 +10,7 @@ from dlabalone.networks.base import Network
 
 
 class AlphaAbalone(Network):
-    def __init__(self, mode, data_format="channels_first"):
+    def __init__(self, mode, data_format="channels_last"):
         self.mode = mode
         self.data_format = data_format
         if mode == 'policy':

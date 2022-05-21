@@ -15,14 +15,14 @@ if __name__ == '__main__':
     # model & encoder loader
     def load_models():
         model_policy = load_model(
-            '../data/rl/models/old/model_Generation_1__1536games_0.h5')
+            '../data/checkpoints/models/ACSimple1Policy_dropout0.1_FourPlaneEncoder_channels_last_epoch_13.h5')
         model_value = load_model(
-            '../data/rl/models/old/model_Generation_1__1536games_1.h5')
+            '../data/checkpoints/models/ACSimple1Value_dropout0.1_FourPlaneEncoder_channels_last_epoch_100.h5')
         return [model_policy, model_value]
 
     # model_policy.compile(loss='categorical_crossentropy', optimizer=SGD(), metrics=['accuracy'])
     # model_value.compile(loss='mean_squared_error', optimizer=SGD(), metrics=['mean_squared_error'])
-    encoder = get_encoder_by_name('fourplane', 5, '')
+    encoder = get_encoder_by_name('fourplane', 5, '', data_format='channels_last')
 
     # Load convertor, train_fn, move_selectors
     predict_convertor = predict_convertor_separated_ac

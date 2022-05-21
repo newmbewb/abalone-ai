@@ -6,7 +6,7 @@ from dlabalone.encoders.base import Encoder
 
 
 class FourPlaneEncoder(Encoder):
-    def __init__(self, board_size, mode, data_format="channels_first"):
+    def __init__(self, board_size, mode=None, data_format="channels_last"):
         super().__init__(board_size, mode)
         self.num_planes = 4
         self.valid_map = np.zeros((self.max_xy, self.max_xy))

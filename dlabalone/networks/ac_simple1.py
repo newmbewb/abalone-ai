@@ -10,7 +10,7 @@ from dlabalone.networks.base import Network
 
 
 class ACSimple1(Network):
-    def __init__(self, mode, dropout_rate=0.1, data_format="channels_first"):
+    def __init__(self, mode, dropout_rate=0.1, data_format="channels_last"):
         self.mode = mode
         self.dropout_rate = dropout_rate
         self.data_format = data_format
@@ -22,14 +22,15 @@ class ACSimple1(Network):
             assert False, "Wrong mode"
         super().__init__(name)
 
-    def model(self, input_shape, num_classes, optimizer='adam'):
+    def model(self, input_shape, num_classes, optimizer=None):
         model = self._model(input_shape, num_classes, dropout_rate=self.dropout_rate)
-        if self.mode == 'policy':
-            model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
-        elif self.mode == 'value':
-            model.compile(loss='mean_squared_error', optimizer=optimizer, metrics=['mean_squared_error'])
-        else:
-            return None
+        if optimizer is not None:
+            if self.mode == 'policy':
+                model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+            elif self.mode == 'value':
+                model.compile(loss='mean_squared_error', optimizer=optimizer, metrics=['mean_squared_error'])
+            else:
+                return None
         return model
 
     def _model(self, input_shape, num_classes,
@@ -42,6 +43,7 @@ class ACSimple1(Network):
         if self.mode == 'policy':
             model.add(Flatten())
             model.add(Dense(num_classes, activation='softmax'))
+            # model.add(Activation('softmax'))
             return model
 
         elif self.mode == 'value':

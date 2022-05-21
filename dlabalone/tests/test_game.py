@@ -3,12 +3,14 @@ import os
 
 from dlabalone.ablboard import GameState
 from dlabalone.abltypes import Player
+from dlabalone.agent.mcts_with_critic import MCTSBotCritic
 from dlabalone.agent.network_naive import NetworkNaiveBot
 from dlabalone.agent.random_kill_first import RandomKillBot
 from dlabalone.agent.alphabeta import AlphaBetaBot
 from dlabalone.agent.mcts import MCTSBot
 from dlabalone.encoders.base import get_encoder_by_name
 from dlabalone.utils import print_board, encode_board_str, profiler
+from keras.models import load_model
 import cProfile
 import random
 
@@ -26,12 +28,14 @@ def test1():
     # bot = AlphaBetaBot(depth=3, width=100)
     # bot = MCTSBot(name='MCTS', num_rounds=1000, temperature=0.1)
     bot = MCTSBot(name='MCTS20000r0.01t', num_rounds=20000, temperature=0.01)
+    # bot = mcts_with_critic_bot_generator()
     step = 0
     profiler.start('game')
     while not game.is_over():
         game = game.apply_move(bot.select_move(game))
+        print(f'{step}')
         step += 1
-        if step == 20:
+        if step == 5:
             break
         # if step % 1 == 0:
         #     print(f'{step}')
@@ -117,6 +121,12 @@ def network_bot_generator():
         selector='greedy')
 
 
+def mcts_with_critic_bot_generator():
+    encoder = get_encoder_by_name('fourplane', 5, None, data_format='channels_last')
+    critic = load_model('../../data/checkpoints/models/ACSimple1Value_dropout0.1_FourPlaneEncoder_channels_last_epoch_100.h5')
+    return MCTSBotCritic(encoder, critic, selector='greedy', num_rounds=100, temperature=0.01)
+
+
 if __name__ == '__main__':
     random.seed(0)
     enable_profile = False
@@ -129,12 +139,12 @@ if __name__ == '__main__':
     ####################################
     profiler.start('game')
 
-    # if True:
-    if False:
+    if True:
+    # if False:
         test1()
     else:
-        bot_A = MCTSBot(name='MCTS20000r0.01t', num_rounds=4000, temperature=0.001)
-        bot_B = network_bot_generator
+        bot_A = MCTSBot(name='MCTS20000r0.01t', num_rounds=20000, temperature=0.01)
+        bot_B = mcts_with_critic_bot_generator
         compare_bot(bot_A, bot_B, run_iter=10, threads=2)
 
     profiler.end('game')
