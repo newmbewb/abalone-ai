@@ -7,7 +7,7 @@ import numpy as np
 __all__ = [
     'ExperienceCollector',
     'ExperienceBuffer',
-    'combine_experience',
+    # 'combine_experience',
     'load_experience',
 ]
 
@@ -22,13 +22,15 @@ class ExperienceSaver:
         self.actions = []
         self.values = []
         self.advantages = []
+        self.probabilities = []
         self.compression = compression
 
-    def save_data(self, states, actions, values, advantages):
+    def save_data(self, states, actions, values, advantages, probabilities):
         self.states += states
         self.actions += actions
         self.values += values
         self.advantages += advantages
+        self.probabilities += probabilities
         while len(self.states) > self.experience_per_file:
             self.save_as_file(self.experience_per_file)
 
@@ -40,12 +42,14 @@ class ExperienceSaver:
         buffer = ExperienceBuffer(self.states[:length],
                                   self.actions[:length],
                                   self.values[:length],
-                                  self.advantages[:length])
+                                  self.advantages[:length],
+                                  self.probabilities[:length])
 
         self.states = self.states[length:]
         self.actions = self.actions[length:]
         self.values = self.values[length:]
         self.advantages = self.advantages[length:]
+        self.probabilities = self.probabilities[length:]
 
         self.h5file_index += 1
         with h5py.File(self.h5file_format % self.h5file_index, 'w') as experience_outf:
@@ -61,6 +65,7 @@ class ExperienceCollector:
         self.actions = []
         self.target_values = []
         self.advantages = []
+        self.probabilities = []
 
         self._current_episode_states = []
         self._current_episode_actions = []
@@ -92,10 +97,12 @@ class ExperienceCollector:
         advantage = []
         actions = []
         target_value = []
+        probability = []
         last_new_value = reward
         for turn in range(num_states)[::-1]:
             states.append(self._current_episode_states[turn])
             actions.append(self._current_episode_actions[turn])
+            probability.append(self._current_episode_probability[turn])
             prob_opp = self._current_episode_opp_probability[turn]
             pp = self._current_episode_probability[turn] * prob_opp
             estimated_value = self._current_episode_estimated_values[turn]
@@ -114,17 +121,19 @@ class ExperienceCollector:
         self.actions += actions
         self.target_values += target_value
         self.advantages += advantage
+        self.probabilities += probability
 
     def save_as_file(self):
-        self.saver.save_data(self.states, self.actions, self.target_values, self.advantages)
+        self.saver.save_data(self.states, self.actions, self.target_values, self.advantages, self.probabilities)
 
 
 class ExperienceBuffer:
-    def __init__(self, states, actions, values, advantages):
+    def __init__(self, states, actions, values, advantages, probabilities):
         self.states = states
         self.actions = actions
         self.values = values
         self.advantages = advantages
+        self.probabilities = probabilities
 
     def serialize(self, h5file, compression=None):
         h5file.create_group('experience')
@@ -133,20 +142,21 @@ class ExperienceBuffer:
         h5file['experience'].create_dataset('actions', data=self.actions)
         h5file['experience'].create_dataset('values', data=self.values)
         h5file['experience'].create_dataset('advantages', data=self.advantages)
+        h5file['experience'].create_dataset('probabilities', data=self.probabilities)
 
 
-def combine_experience(collectors):
-    combined_states = np.concatenate([np.array(c.states) for c in collectors])
-    combined_actions = np.concatenate([np.array(c.actions) for c in collectors])
-    combined_values = np.concatenate([np.array(c.values) for c in collectors])
-    combined_advantages = np.concatenate([
-        np.array(c.advantages) for c in collectors])
-
-    return ExperienceBuffer(
-        combined_states,
-        combined_actions,
-        combined_values,
-        combined_advantages)
+# def combine_experience(collectors):
+#     combined_states = np.concatenate([np.array(c.states) for c in collectors])
+#     combined_actions = np.concatenate([np.array(c.actions) for c in collectors])
+#     combined_values = np.concatenate([np.array(c.values) for c in collectors])
+#     combined_advantages = np.concatenate([
+#         np.array(c.advantages) for c in collectors])
+#
+#     return ExperienceBuffer(
+#         combined_states,
+#         combined_actions,
+#         combined_values,
+#         combined_advantages)
 
 
 def load_experience(h5file):
@@ -154,4 +164,6 @@ def load_experience(h5file):
         states=np.array(h5file['experience']['states']),
         actions=np.array(h5file['experience']['actions']),
         values=np.array(h5file['experience']['values']),
-        advantages=np.array(h5file['experience']['advantages']))
+        advantages=np.array(h5file['experience']['advantages']),
+        probabilities=np.array(h5file['experience']['probabilities'])
+    )

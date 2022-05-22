@@ -10,6 +10,9 @@ from tensorflow.keras import layers
 
 policy_learning_rate = 3e-4
 EPSILON = 1e-6
+EPOCHS = 30
+TARGET_KL = 0.01
+
 ENTROPY_LOSS_FACTOR = 0.001
 _policy_optimizer = keras.optimizers.Adam(learning_rate=policy_learning_rate)
 
@@ -43,7 +46,7 @@ def calculate_pi(probability, action, num_actions):
 
 
 @tf.function
-def train_policy(actor, observation_buffer, action_buffer, pi_old_buffer, advantage_buffer, num_actions,
+def _train_policy(actor, observation_buffer, action_buffer, pi_old_buffer, advantage_buffer, num_actions,
                  clip_ratio=0.2):
     advantage_buffer = tf.where(advantage_buffer > 0, advantage_buffer, advantage_buffer / (num_actions - 1))
 
@@ -77,3 +80,15 @@ def train_policy(actor, observation_buffer, action_buffer, pi_old_buffer, advant
     # kl = tf.reduce_sum(kl)
     # return kl
 
+
+def train_policy(actor, observation_buffer, action_buffer, pi_old_buffer, advantage_buffer, num_actions,
+                 clip_ratio=0.2):
+    probability_old = clip_to_epsilon(actor(observation_buffer))
+    for i in range(EPOCHS):
+        _train_policy(actor, observation_buffer, action_buffer, pi_old_buffer, advantage_buffer, num_actions, clip_ratio)
+        probability = actor(observation_buffer)
+        kl = tf.reduce_sum(probability_old * tf.math.log(probability_old / probability), axis=1)
+        # if tf.reduce_mean(kl) > advantage_buffer * 1.5 * TARGET_KL:
+        if tf.reduce_mean(kl) > 1.5 * TARGET_KL:
+            break
+        print(f'**********************next {i}')

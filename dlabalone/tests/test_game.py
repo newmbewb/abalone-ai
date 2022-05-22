@@ -28,6 +28,7 @@ def test1():
     # bot = AlphaBetaBot(depth=3, width=100)
     # bot = MCTSBot(name='MCTS', num_rounds=1000, temperature=0.1)
     bot = MCTSBot(name='MCTS20000r0.01t', num_rounds=20000, temperature=0.01)
+    bot = network_bot_generator()
     # bot = mcts_with_critic_bot_generator()
     step = 0
     profiler.start('game')
@@ -35,7 +36,7 @@ def test1():
         game = game.apply_move(bot.select_move(game))
         print(f'{step}')
         step += 1
-        if step == 5:
+        if step == 20:
             break
         # if step % 1 == 0:
         #     print(f'{step}')
@@ -144,7 +145,7 @@ if __name__ == '__main__':
         test1()
     else:
         bot_A = MCTSBot(name='MCTS20000r0.01t', num_rounds=20000, temperature=0.01)
-        bot_B = mcts_with_critic_bot_generator
+        bot_B = network_bot_generator
         compare_bot(bot_A, bot_B, run_iter=10, threads=2)
 
     profiler.end('game')

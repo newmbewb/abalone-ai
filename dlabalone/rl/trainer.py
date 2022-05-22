@@ -13,6 +13,7 @@ from dlabalone.abltypes import Player
 from dlabalone.rl.experience import load_experience, ExperienceBuffer
 from dlabalone.rl.move_selectors.eps_greedy import EpsilonGreedyMoveSelector
 from dlabalone.rl.move_selectors.exponential import ExponentialMoveSelector
+from dlabalone.rl.ppo import train_policy
 from dlabalone.rl.simulate import experience_simulation
 
 
@@ -23,7 +24,7 @@ def predict_convertor_separated_ac(predict_output_batch_list, index):
 
 
 def train_function_separated_ac(models, encoder, dataset, history, remove_negative=False):
-    states, actions, value, advantages = dataset
+    states, actions, value, advantages, probabilities = dataset
     model_policy = models[0]
     model_value = models[1]
 
@@ -32,40 +33,46 @@ def train_function_separated_ac(models, encoder, dataset, history, remove_negati
     value_target = value
     history_value = model_value.fit(states, value_target, batch_size=n, epochs=1, verbose=0)
 
-    # Train policy: Remove negative weights first
-    if remove_negative:
-        states = states[advantages > 0]
-        n = states.shape[0]
-        actions = actions[advantages > 0]
-        advantages = advantages[advantages > 0]
+    # Train policy: Remove negative weights first (PPO)
+    probabilities = probabilities.astype(np.single)
+    train_policy(model_policy, states, actions, probabilities, advantages, encoder.num_moves())
 
-    num_moves = encoder.num_moves()
-    policy_target = np.zeros((n, num_moves))
-
-    sample_weight = advantages
-    for i in range(n):
-        action = actions[i]
-        policy_target[i][action] = 1
-
-    # Normalize
-    m = len(sample_weight) / np.sum(np.abs(sample_weight))
-    sample_weight *= m
-    history_policy = model_policy.fit(states, policy_target, sample_weight=sample_weight, batch_size=n, epochs=1,
-                                      verbose=0)
+    ##############################
+    # # Train policy: Remove negative weights first
+    # if remove_negative:
+    #     states = states[advantages > 0]
+    #     n = states.shape[0]
+    #     actions = actions[advantages > 0]
+    #     advantages = advantages[advantages > 0]
+    #
+    # num_moves = encoder.num_moves()
+    # policy_target = np.zeros((n, num_moves))
+    #
+    # sample_weight = advantages
+    # for i in range(n):
+    #     action = actions[i]
+    #     policy_target[i][action] = 1
+    #
+    # # Normalize
+    # m = len(sample_weight) / np.sum(np.abs(sample_weight))
+    # sample_weight *= m
+    # history_policy = model_policy.fit(states, policy_target, sample_weight=sample_weight, batch_size=n, epochs=1,
+    #                                   verbose=0)
+    ##############################
 
     # Save history
-    policy_loss = history.get('policy_loss', [])
-    policy_accuracy = history.get('policy_accuracy', [])
+    # policy_loss = history.get('policy_loss', [])
+    # policy_accuracy = history.get('policy_accuracy', [])
     value_loss = history.get('value_loss', [])
     value_mse = history.get('value_mse', [])
 
-    policy_loss += history_policy.history['loss']
-    policy_accuracy += history_policy.history['accuracy']
+    # policy_loss += history_policy.history['loss']
+    # policy_accuracy += history_policy.history['accuracy']
     value_loss += history_value.history['loss']
     value_mse += history_value.history['mean_squared_error']
 
-    history['policy_loss'] = policy_loss
-    history['policy_accuracy'] = policy_accuracy
+    # history['policy_loss'] = policy_loss
+    # history['policy_accuracy'] = policy_accuracy
     history['value_loss'] = value_loss
     history['value_mse'] = value_mse
 
@@ -77,6 +84,7 @@ class DataBuffer:
         self.actions = None
         self.values = None
         self.advantages = None
+        self.probabilities = None
         self.savefile_basename = None
         if self.exp_dir:
             self.savefile_basename = os.path.join(self.exp_dir, f'packed_experiences_{random.random()}_%d.h5')
@@ -98,11 +106,13 @@ class DataBuffer:
             self.actions = buffer.actions
             self.values = buffer.values
             self.advantages = buffer.advantages
+            self.probabilities = buffer.probabilities
         else:
             self.states = np.append(self.states, buffer.states, axis=0)
             self.actions = np.append(self.actions, buffer.actions, axis=0)
             self.values = np.append(self.values, buffer.values, axis=0)
             self.advantages = np.append(self.advantages, buffer.advantages, axis=0)
+            self.probabilities = np.append(self.probabilities, buffer.probabilities, axis=0)
         while True:
             try:
                 os.unlink(file)
@@ -135,28 +145,33 @@ class DataBuffer:
         action_list = []
         value_list = []
         advantage_list = []
+        probability_list = []
 
         for index in s:
             state_list.append(self.states[index])
             action_list.append(self.actions[index])
             value_list.append(self.values[index])
             advantage_list.append(self.advantages[index])
+            probability_list.append(self.probabilities[index])
 
         self.states = np.array(state_list)
         self.actions = np.array(action_list)
         self.values = np.array(value_list)
         self.advantages = np.array(advantage_list)
+        self.probabilities = np.array(probability_list)
 
     def get_next_batch(self, batch_size):
         ret = (self.states[:batch_size],
                self.actions[:batch_size],
                self.values[:batch_size],
                self.advantages[:batch_size],
+               self.probabilities[:batch_size],
                )
         self.states = self.states[batch_size:]
         self.actions = self.actions[batch_size:]
         self.values = self.values[batch_size:]
         self.advantages = self.advantages[batch_size:]
+        self.probabilities = self.probabilities[batch_size:]
         return ret
 
     def save(self, experiences):
@@ -198,7 +213,7 @@ def train_ac(load_models, encoder, predict_convertor, train_fn, exp_dir, model_d
         print(f'Simulation time: {time.time() - time_start} seconds')
         episode_count += 1
         total_games += num_games
-        cur_move_selector.temperature_down()
+        # cur_move_selector.temperature_down()
 
         # Shuffle data
         print(f'Shuffling data...')
