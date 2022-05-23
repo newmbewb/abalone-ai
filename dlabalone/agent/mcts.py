@@ -55,13 +55,14 @@ class MCTSNode(object):
 
 
 class MCTSBot(Agent):
-    def __init__(self, name=None, num_rounds=10, temperature=1.5, version='1.1'):
+    def __init__(self, name=None, num_rounds=10, temperature=1.5):
         super().__init__(name)
         self.num_rounds = num_rounds
         self.temperature = temperature
 
-    def select_move(self, game_state):
+    def select_move(self, game_state, **kwargs):
         root = MCTSNode(game_state)
+        max_depth = 0
 
         for i in range(self.num_rounds):
             node = root
@@ -76,9 +77,16 @@ class MCTSBot(Agent):
             black_win_probability = self.simulate_random_game(node.game_state)
 
             # Propagate scores back up the tree.
+            depth = -1
             while node is not None:
+                depth += 1
                 node.record_black_win_probability(black_win_probability)
                 node = node.parent
+            max_depth = max(max_depth, depth)
+
+        if 'stats' in kwargs:
+            stats = kwargs['stats']
+            stats['max_depth'] = max_depth
 
         # scored_moves = [
         #     (child.winning_frac(game_state.next_player), child.move, child.num_rollouts)
