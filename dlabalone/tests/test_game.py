@@ -3,6 +3,7 @@ import os
 
 from dlabalone.ablboard import GameState
 from dlabalone.abltypes import Player
+from dlabalone.agent.mcts_ac import MCTSACBot
 from dlabalone.agent.mcts_with_critic import MCTSBotCritic
 from dlabalone.agent.network_naive import NetworkNaiveBot
 from dlabalone.agent.random_kill_first import RandomKillBot
@@ -27,17 +28,21 @@ def test1():
     # bot = RandomKillBot()
     # bot = AlphaBetaBot(depth=3, width=100)
     # bot = MCTSBot(name='MCTS', num_rounds=1000, temperature=0.1)
-    bot = MCTSBot(name='MCTS20000r0.01t', num_rounds=20000, temperature=0.01)
-    bot = network_bot_generator()
+    # bot = MCTSBot(name='MCTS20000r0.01t', num_rounds=20000, temperature=0.01)
+    # bot = network_bot_generator()
     # bot = mcts_with_critic_bot_generator()
+    bot = MCTSACBot(encoder, actor, critic, num_rounds=300)
     step = 0
+    max_depths = []
     profiler.start('game')
     while not game.is_over():
-        game = game.apply_move(bot.select_move(game))
-        print(f'{step}')
+        stat = {}
+        game = game.apply_move(bot.select_move(game, stat=stat))
+        max_depths.append(stat['max_depth'])
+        # print(f'{step}')
         step += 1
-        if step == 20:
-            break
+        # if step == 20:
+        #     break
         # if step % 1 == 0:
         #     print(f'{step}')
         #     print(f"{'----' * 5} {step} steps {'----' * 5}")
@@ -46,6 +51,7 @@ def test1():
     print_board(game.board)
     print('====' * 10)
     print(step)
+    print(max_depths)
     profiler.print('game')
 
 

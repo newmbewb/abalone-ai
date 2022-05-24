@@ -4,9 +4,14 @@ from dlabalone.rl.move_selectors.base import MoveSelector
 
 
 class ExponentialMoveSelector(MoveSelector):
-    def __init__(self, temperature=0.5):
+    def __init__(self, temperature=0.5, fixed_exponent=None):
         super().__init__(temperature=temperature)
         self.max_exponential = 2
+        if fixed_exponent is not None:
+            self.max_exponential = fixed_exponent
+            self.temperature = 0
+            self.temperature_up = lambda: None
+            self.temperature_down = lambda: None
 
     def __call__(self, encoder, move_probs, legal_moves):
         move_probs = move_probs ** ((1 - self.temperature) * self.max_exponential)

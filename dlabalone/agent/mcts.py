@@ -84,9 +84,9 @@ class MCTSBot(Agent):
                 node = node.parent
             max_depth = max(max_depth, depth)
 
-        if 'stats' in kwargs:
-            stats = kwargs['stats']
-            stats['max_depth'] = max_depth
+        if 'stat' in kwargs:
+            stat = kwargs['stat']
+            stat['max_depth'] = max_depth
 
         # scored_moves = [
         #     (child.winning_frac(game_state.next_player), child.move, child.num_rollouts)

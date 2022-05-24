@@ -17,12 +17,21 @@ from dlabalone.rl.ppo import train_policy
 from dlabalone.rl.simulate import experience_simulation
 
 
+##################################################
+# Prediction convertors
 def predict_convertor_separated_ac(predict_output_batch_list, index):
     move_probs = predict_output_batch_list[0][index]
     estimated_value = predict_output_batch_list[1][index]
     return move_probs, estimated_value
 
 
+def predict_convertor_single_model(predict_output_batch_list, index):
+    move_probs = predict_output_batch_list[0][index]
+    return move_probs, 0
+
+
+##################################################
+# Train functions
 def train_function_separated_ac(models, encoder, dataset, history, remove_negative=False):
     states, actions, value, advantages, probabilities = dataset
     model_policy = models[0]
