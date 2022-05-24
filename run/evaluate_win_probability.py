@@ -1,5 +1,6 @@
 import os
 import random
+import time
 
 from keras.models import load_model
 
@@ -28,6 +29,8 @@ if __name__ == '__main__':
     random.shuffle(file_list)
     move_selector = ExponentialMoveSelector(fixed_exponent=1)
     predict_convertor = predict_convertor_single_model
+    start_time = time.time()
+    total_count = 0
     for f in file_list:
         output_filepath = os.path.join(output_dir, f'generation_0_{f}.txt')
         if os.path.exists(output_filepath):
@@ -59,8 +62,10 @@ if __name__ == '__main__':
                     draws += 1
                     win_count += 0.5
             win_rate = win_count / len(stat_list)
+            total_count += 1
+
             output = f'{encode_board_str(board)}&{value}&{win_rate}'
-            fd_out.write(output)
+            fd_out.write(output + '\n')
             fd_out.flush()
-            print(f'{output} (W/L/D: {wins}/{losses}/{draws})')
+            print(f'{output} (W/L/D: {wins}/{losses}/{draws}) {(time.time() - start_time)/total_count:.3f} sec/game')
         fd_out.close()
