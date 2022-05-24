@@ -12,6 +12,7 @@ from dlabalone.agent.mcts import MCTSBot
 from dlabalone.encoders.base import get_encoder_by_name
 from dlabalone.utils import print_board, encode_board_str, profiler
 from keras.models import load_model
+import tensorflow as tf
 import cProfile
 import random
 
@@ -31,7 +32,12 @@ def test1():
     # bot = MCTSBot(name='MCTS20000r0.01t', num_rounds=20000, temperature=0.01)
     # bot = network_bot_generator()
     # bot = mcts_with_critic_bot_generator()
-    bot = MCTSACBot(encoder, actor, critic, num_rounds=300)
+    encoder = get_encoder_by_name('fourplane', 5, None, data_format='channels_last')
+    critic = load_model(
+        '../../data/checkpoints/models/ACSimple1Value_dropout0.1_FourPlaneEncoder_channels_last_epoch_100.h5')
+    actor = load_model(
+        '../../data/checkpoints/models/ACSimple1Policy_dropout0.1_FourPlaneEncoder_channels_last_epoch_13.h5')
+    bot = MCTSACBot(encoder, actor, critic, num_rounds=5120)
     step = 0
     max_depths = []
     profiler.start('game')
@@ -39,10 +45,10 @@ def test1():
         stat = {}
         game = game.apply_move(bot.select_move(game, stat=stat))
         max_depths.append(stat['max_depth'])
-        # print(f'{step}')
+        print(f'step: {step}')
         step += 1
-        # if step == 20:
-        #     break
+        if step == 10:
+            break
         # if step % 1 == 0:
         #     print(f'{step}')
         #     print(f"{'----' * 5} {step} steps {'----' * 5}")
@@ -138,6 +144,8 @@ if __name__ == '__main__':
     random.seed(0)
     enable_profile = False
     print(f"Profile: {str(enable_profile)}")
+    tf.debugging.disable_traceback_filtering()
+    tf.compat.v1.disable_eager_execution()
     pr = None
     if enable_profile:
         pr = cProfile.Profile()

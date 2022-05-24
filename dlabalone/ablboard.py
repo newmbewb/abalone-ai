@@ -110,9 +110,11 @@ class GameState(object):
         return True
 
     def is_valid_move(self, stones, direction):
-        # Check whether all stones are on grid
+        next_player = self.next_player
+        # Check whether all stones belong to next_player
         for stone in stones:
-            if not self.board.is_on_grid(stone):
+            player = self.board.grid.get(stone, None)
+            if player != next_player:
                 return False
 
         # Check whether stones are in single file

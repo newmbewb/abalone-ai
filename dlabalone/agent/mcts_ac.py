@@ -2,6 +2,7 @@ import math
 import random
 
 import numpy as np
+import tensorflow as tf
 
 from dlabalone.abltypes import Player
 from dlabalone.agent.base import Agent
@@ -13,17 +14,21 @@ __all__ = [
 ]
 
 
+eps = 1e-6
+
+
 class MCTSACNode(object):
     max_width = 5
 
-    def __init__(self, game_state, parent=None):
+    def __init__(self, game_state, move, parent=None):
         self.game_state = game_state
         self.next_player = game_state.next_player
+        self.move = move
         self.parent = parent
         self.critic_score = None
         self.score = {}
         self.explorable_moves = self.max_width
-        self.num_rollouts = 0
+        self.num_rollouts = 1
         self.children = []
         self.unvisited_moves = None
         self.encoded_board = None
@@ -56,13 +61,18 @@ class MCTSACNode(object):
         if self.parent is not None:
             self.parent.update()
 
-    def update_score(self, score):
+    def init_score(self, score):
         self.critic_score = score
         self.score[self.next_player] = score
         self.score[self.next_player.other] = -score
-        self.parent.update()
+        self.num_rollouts = 1
+        # if self.parent is not None:
+        #     self.parent.update()
 
-    def update_move_list(self, encoder, move_probs):
+    def update_unvisited_moves(self, encoder, move_probs):
+        self.encoded_board = None  # Deleted not encoded board for memory reuse
+        move_probs = np.clip(move_probs, eps, 1-eps)
+        move_probs = move_probs / np.sum(move_probs)
         num_moves = encoder.num_moves()
         ranked_moves = np.random.choice(np.arange(num_moves), num_moves, replace=False, p=move_probs)
         self.unvisited_moves = []
@@ -70,13 +80,15 @@ class MCTSACNode(object):
             move = encoder.decode_move_index(move_idx)
             if self.game_state.is_valid_move(move.stones, move.direction):
                 self.unvisited_moves.append(move)
+                if len(self.unvisited_moves) >= self.max_width:
+                    break
 
     def get_unvisited_children(self, count):
         ret = []
         for _ in range(count):
             new_move = self.unvisited_moves.pop(0)
             new_game_state = self.game_state.apply_move(new_move)
-            new_node = MCTSACNode(new_game_state, self)
+            new_node = MCTSACNode(new_game_state, new_move, self)
             self.children.append(new_node)
             ret.append(new_node)
         return ret
@@ -86,8 +98,15 @@ class MCTSACNode(object):
 
 
 def _uct_score(score, temp, log_rollout, node_rollout):
-    win_frac = (score + 1) / 2
+    win_frac = MCTSACBot.score_to_winrate(score)
     return win_frac + temp * math.sqrt(log_rollout / node_rollout)
+
+
+# @tf.function(experimental_relax_shapes=True)
+# def _tf_helper(model, input_data):
+#     return model(input_data)
+def _tf_helper(model, input_data):
+    return model.predict_on_batch(input_data)
 
 
 class MCTSACBot(Agent):
@@ -160,20 +179,25 @@ class MCTSACBot(Agent):
 
         return actor_list, critic_list
 
-    def select_move(self, game_state):
-        root = MCTSACNode(game_state)
+    def select_move(self, game_state, **kwargs):
+        root = MCTSACNode(game_state, None)
+        encoded_board = self.encoder.encode_board(root.game_state.board, root.next_player)
+        root.encoded_board = encoded_board
+        root.init_score(0)
         remain_rounds = self.num_rounds
 
         while remain_rounds > 0:
+            print(f'remain_rounds: {remain_rounds}')
             # Get moves which we evaluate at this iteration
             actor_list, critic_list = self._get_moves_to_eval(root, self.batch_size)
-            remain_rounds -= len(critic_list)
+            remain_rounds -= sum(map(lambda x: x[1], critic_list))
 
             # Run actor and get moves for un-actored nodes
-            actor_input = np.array([node.encoded_board for node in actor_list])
-            actor_output = self.actor.predict_on_batch(actor_input)
-            for node, moves in zip(actor_list, actor_output):
-                node.update_move_list(self.encoder, moves)
+            if len(actor_list) > 0:
+                actor_input = np.array([node.encoded_board for node in actor_list])
+                actor_output = _tf_helper(self.actor, actor_input)
+                for node, moves in zip(actor_list, actor_output):
+                    node.update_unvisited_moves(self.encoder, moves)
 
             # Calculate value for new nodes
             critic_nodes = []
@@ -185,6 +209,40 @@ class MCTSACBot(Agent):
                 node.encoded_board = encoded_board
                 critic_input.append(encoded_board)
             critic_input = np.array(critic_input)
-            critic_output = self.critic.predict_on_batch(critic_input)
-            for node, value in critic_nodes, critic_output:
-                node.update_score(value)
+            critic_output = _tf_helper(self.critic, critic_input)
+            for node, value in zip(critic_nodes, critic_output):
+                node.init_score(value[0])
+
+            # Update parents
+            for parent, _ in critic_list:
+                parent.update()
+
+        # Select move
+        probs = []
+        for child in root.children:
+            probs.append(self.score_to_winrate(child.score[game_state.next_player]))
+        print(probs)
+
+        # First round
+        sorted_index = np.argsort(probs)
+        selected_index = None
+        print(sorted_index)
+        for index in sorted_index[::-1]:
+            print(index)
+            print(type(index))
+            if random.random() < probs[index]:
+                selected_index = index
+                break
+
+        if selected_index is not None:
+            return root.children[selected_index].move
+
+        # Second round
+        probs = np.clip(probs, eps, 1 - eps)
+        probs = probs / np.sum(probs)
+        children = np.random.choice(root.children, 1, p=probs)
+        return children[0].move
+
+    @staticmethod
+    def score_to_winrate(score):
+        return (score + 1) / 2
