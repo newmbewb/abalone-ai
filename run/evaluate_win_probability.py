@@ -3,6 +3,7 @@ import random
 
 from keras.models import load_model
 
+from dlabalone.ablboard import GameState
 from dlabalone.abltypes import Player
 from dlabalone.encoders.base import get_encoder_by_name
 from dlabalone.rl.move_selectors.exponential import ExponentialMoveSelector
@@ -41,12 +42,13 @@ if __name__ == '__main__':
             losses = 0
             draws = 0
             win_count = 0
+            start_state = GameState(board, Player.black)
             stat_list = experience_simulation(num_games,
                                               [model_policy], [model_policy],
                                               encoder, encoder,
                                               move_selector, move_selector,
                                               predict_convertor, predict_convertor,
-                                              populate_games=False)
+                                              populate_games=False, start_state=start_state)
             for stat in stat_list:
                 if stat['winner'] == Player.black:
                     wins += 1

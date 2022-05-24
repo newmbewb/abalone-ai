@@ -1,3 +1,4 @@
+import copy
 import random
 import os
 import h5py
@@ -12,7 +13,7 @@ from dlabalone.utils import encode_board_str
 
 
 class ExperienceGameState(object):
-    def __init__(self, encoder_black, encoder_white, saver, populator=None):
+    def __init__(self, encoder_black, encoder_white, saver, populator=None, start_state=None):
         self.collectors_black = []
         self.collectors_white = []
         if saver is not None:
@@ -29,7 +30,10 @@ class ExperienceGameState(object):
                         Player.white: encoder_white}
         self.populator = populator
         self.stat = {'total_moves': 0, 'new_moves': 0, 'winner': None}
-        self.game_state = GameState.new_game(5)
+        if start_state is not None:
+            self.game_state = copy.deepcopy(start_state)
+        else:
+            self.game_state = GameState.new_game(5)
         self.step_count = 0
         self.past_boards = {}
         self.too_many_repeat = False
@@ -125,7 +129,7 @@ def experience_simulation(num_games,
                           move_selector_black, move_selector_white,
                           predict_convertor_black, predict_convertor_white,
                           exp_dir=None, populate_games=True,
-                          experience_per_file=65536, compression=None):
+                          experience_per_file=65536, compression=None, start_state=None):
     # Save parameters
     encoder = {Player.black: encoder_black, Player.white: encoder_white}
     models = {Player.black: models_black, Player.white: models_white}
@@ -148,8 +152,7 @@ def experience_simulation(num_games,
         saver = None
     for index in range(num_games):
         game_list.append(ExperienceGameState(encoder_black, encoder_white,
-                                             saver=saver,
-                                             populator=populator))
+                                             saver=saver, populator=populator, start_state=start_state))
 
     #####################
     # Run games
