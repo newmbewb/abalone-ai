@@ -1,0 +1,1 @@
+run `python -m http.server` and access `localhost:8000/`

@@ -218,15 +218,7 @@ function treeBoxes(urlService, jsonData)
 							+ '<b>Code: </b>' + d.code + '<br>'
 							+ '<b>Version: </b>' + d.version + '<br>'
 							+ '</div>';
-				})
-		.on('mouseover', function(d) {
-			$('#nodeInfoID' + d.id).css('visibility', 'visible');
-			$('#nodeInfoTextID' + d.id).css('visibility', 'visible');
-		})
-		.on('mouseout', function(d) {
-			$('#nodeInfoID' + d.id).css('visibility', 'hidden');
-			$('#nodeInfoTextID' + d.id).css('visibility', 'hidden');
-		});
+				});
 
 		nodeEnterTooltip.append("rect")
 		.attr('id', function(d) { return 'nodeInfoID' + d.id; })
@@ -235,17 +227,7 @@ function treeBoxes(urlService, jsonData)
 		.attr('width', tooltip.width)
 		.attr('height', tooltip.height)
     	.attr('class', 'tooltip-box')
-    	.style('fill-opacity', 0.8)
-		.on('mouseover', function(d) {
-			$('#nodeInfoID' + d.id).css('visibility', 'visible');
-			$('#nodeInfoTextID' + d.id).css('visibility', 'visible');
-			removeMouseEvents();
-		})
-		.on('mouseout', function(d) {
-			$('#nodeInfoID' + d.id).css('visibility', 'hidden');
-			$('#nodeInfoTextID' + d.id).css('visibility', 'hidden');
-			reactivateMouseEvents();
-		});
+    	.style('fill-opacity', 0.8);
 
 		nodeEnterTooltip.append("text")
 		.attr('id', function(d) { return 'nodeInfoTextID' + d.id; })
@@ -324,26 +306,7 @@ function treeBoxes(urlService, jsonData)
 			.attr('id', function(d) { return 'linkID' + d.target.id; })
 			.attr('d', function(d) { return diagonal(d); })
 			.attr('marker-end', 'url(#end-arrow)')
-			.attr('marker-start', function(d) { return linkMarkerStart(d.target.link.direction, false); })
-			.on('mouseover', function(d) {
-				d3.select(this).moveToFront();
-
-				d3.select(this).attr('marker-end', 'url(#end-arrow-selected)');
-				d3.select(this).attr('marker-start', linkMarkerStart(d.target.link.direction, true));
-				d3.select(this).attr('class', 'linkselected');
-
-				$('#tooltipLinkID' + d.target.id).attr('x', (d.target.y + rectNode.width - d.source.y) / 2 + d.source.y);
-				$('#tooltipLinkID' + d.target.id).attr('y', (d.target.x - d.source.x) / 2 + d.source.x);
-				$('#tooltipLinkID' + d.target.id).css('visibility', 'visible');
-				$('#tooltipLinkTextID' + d.target.id).css('visibility', 'visible');
-			})
-			.on('mouseout', function(d) {
-				d3.select(this).attr('marker-end', 'url(#end-arrow)');
-				d3.select(this).attr('marker-start', linkMarkerStart(d.target.link.direction, false));
-				d3.select(this).attr('class', 'link');
-				$('#tooltipLinkID' + d.target.id).css('visibility', 'hidden');
-				$('#tooltipLinkTextID' + d.target.id).css('visibility', 'hidden');
-			});
+			.attr('marker-start', function(d) { return linkMarkerStart(d.target.link.direction, false); });
 
 			linkTooltip.enter().append('rect')
 			.attr('id', function(d) { return 'tooltipLinkID' + d.target.id; })
@@ -352,26 +315,7 @@ function treeBoxes(urlService, jsonData)
 			.attr('x', function(d) { return (d.target.y + rectNode.width - d.source.y) / 2 + d.source.y; })
 			.attr('y', function(d) { return (d.target.x - d.source.x) / 2 + d.source.x; })
 			.attr('width', tooltip.width)
-			.attr('height', tooltip.height)
-			.on('mouseover', function(d) {
-				$('#tooltipLinkID' + d.target.id).css('visibility', 'visible');
-				$('#tooltipLinkTextID' + d.target.id).css('visibility', 'visible');
-				// After selected a link, the cursor can be hover the tooltip, that's why we still need to highlight the link and the arrow
-				$('#linkID' + d.target.id).attr('class', 'linkselected');
-				$('#linkID' + d.target.id).attr('marker-end', 'url(#end-arrow-selected)');
-				$('#linkID' + d.target.id).attr('marker-start', linkMarkerStart(d.target.link.direction, true));
-
-				removeMouseEvents();
-			})
-			.on('mouseout', function(d) {
-				$('#tooltipLinkID' + d.target.id).css('visibility', 'hidden');
-				$('#tooltipLinkTextID' + d.target.id).css('visibility', 'hidden');
-				$('#linkID' + d.target.id).attr('class', 'link');
-				$('#linkID' + d.target.id).attr('marker-end', 'url(#end-arrow)');
-				$('#linkID' + d.target.id).attr('marker-start', linkMarkerStart(d.target.link.direction, false));
-
-				reactivateMouseEvents();
-			});
+			.attr('height', tooltip.height);
 
 			linkTooltip.enter().append('text')
 			.attr('id', function(d) { return 'tooltipLinkTextID' + d.target.id; })

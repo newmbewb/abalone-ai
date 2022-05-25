@@ -15,9 +15,16 @@
     <div class="container">
         <ct-visualization id="tree-container"></ct-visualization>
         <script>
-            d3.json("data-example.json", function(error, json) {
-                treeBoxes('', json.tree);
-            });
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('json')) {
+          const url=new URL(window.location.href);
+          d3.json(url.searchParams.get('json'), function(error, json) {
+            treeBoxes('', json.tree);
+          });
+        }
+        else {
+          document.writeln('usage: ' + window.location.href + '?json=&lt;JSON file&gt;');
+        }
         </script>
     </div>
 </body>
