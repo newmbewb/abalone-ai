@@ -95,7 +95,8 @@ def npz_preloader(encoder, q_infile, q_data):
 
 
 class DataGenerator:
-    def __init__(self, encoder, batch, dataset_dir, out_dir, test_ratio, out_filename_format=None, overwrite=False):
+    def __init__(self, encoder, batch, dataset_dir, out_dir, test_ratio, out_filename_format=None, overwrite=False,
+                 max_train_npz=None):
         self.encoder = encoder
         multiprocessing.freeze_support()
         if out_filename_format is None:
@@ -107,6 +108,10 @@ class DataGenerator:
         # Count the number of files == step count
         dirname = os.path.dirname(out_filename_format)
         self.npz_files = {'test': glob.glob(dirname + '/test_*.npz'), 'train': glob.glob(dirname + '/train_*.npz')}
+        if max_train_npz is not None:
+            self.npz_files['train'] = self.npz_files['train'][:max_train_npz]
+            max_test_npz = int(max_train_npz * test_ratio / (1 - test_ratio))
+            self.npz_files['test'] = self.npz_files['test'][:max_test_npz]
         self.step_count = {'test': len(self.npz_files['test']), 'train': len(self.npz_files['train'])}
 
     def get_num_steps(self, work):

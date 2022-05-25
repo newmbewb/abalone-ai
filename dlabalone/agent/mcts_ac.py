@@ -137,9 +137,10 @@ def _tf_helper(model, input_data):
 
 
 class MCTSACBot(Agent):
-    def __init__(self, encoder, actor, critic, name=None, num_rounds=5120, temperature=0.01, batch_size=128,
+    def __init__(self, encoder, actor, critic, name=None, width=5, num_rounds=5120, temperature=0.01, batch_size=128,
                  randomness=1):
         super().__init__(name)
+        MCTSACNode.max_width = width
         self.num_rounds = num_rounds
         self.temperature = temperature
         self.batch_size = batch_size

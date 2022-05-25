@@ -47,7 +47,8 @@ def encoder_validation_generator(dataset_dir):
 def generate_encoder_trainset(input_encoder: Encoder, output_encoder: Encoder, batch_size, step_count, dataset_dir):
     Board.set_size(5)
     valid_stone_counts = list(range(9, 14+1))
-    output_name_format = os.path.join(dataset_dir, f'encoder_trainset_{random.random()}_%d.h5')
+    output_name_format = os.path.join(
+        dataset_dir, f'encoder_trainset_{input_encoder.name()}_to_{output_encoder.name()}_{random.random()}_%d.h5')
     for step in range(step_count):
         inputs = []
         outputs = []
