@@ -49,7 +49,7 @@ class MCTSACNode(object):
         if len(self.children) == 0:
             max_score = self.critic_score
         else:
-            max_score = -1
+            max_score = -99999
             # Accumulate children stats
             for child in self.children:
                 self.num_rollouts += child.num_rollouts
@@ -62,10 +62,16 @@ class MCTSACNode(object):
             self.parent.update()
 
     def init_score(self, score):
+        self.num_rollouts = 1
+        winner = self.game_state.winner()
+        if winner == self.next_player:
+            score = 1
+        elif winner == self.next_player.other:
+            score = -1
         self.critic_score = score
         self.score[self.next_player] = score
         self.score[self.next_player.other] = -score
-        self.num_rollouts = 1
+
         # if self.parent is not None:
         #     self.parent.update()
 

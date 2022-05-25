@@ -11,6 +11,7 @@ from dlabalone.rl.move_selectors.exponential import ExponentialMoveSelector
 from dlabalone.rl.simulate import experience_simulation
 from dlabalone.rl.trainer import predict_convertor_single_model
 from dlabalone.utils import load_file_board_move_pair, encode_board_str
+import tensorflow as tf
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
@@ -37,6 +38,8 @@ if __name__ == '__main__':
             continue
         print(f'Evaluating {f}...')
         fd_out = open(output_filepath, 'w')
+        fd_out.write('5,unknown\n')
+        fd_out.flush()
 
         full_path = os.path.join(dataset_dir, f)
         pair_list = load_file_board_move_pair(full_path, with_value=True)
