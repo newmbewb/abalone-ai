@@ -11,7 +11,7 @@ from dlabalone.utils import load_file_board_move_pair
 
 
 class AlphaAbaloneEncoder(Encoder):
-    def __init__(self, board_size, mode, data_format="channels_first"):
+    def __init__(self, board_size, mode, data_format="channels_last"):
         super().__init__(board_size, mode)
         self.num_planes = 45
         self.valid_map = np.zeros((self.max_xy, self.max_xy))
@@ -24,7 +24,7 @@ class AlphaAbaloneEncoder(Encoder):
             "data_format should be channels_first or channels_last"
 
     def name(self):
-        return type(self).__name__
+        return f'{type(self).__name__}_{self.data_format}'
 
     def encode_board(self, game_board, next_player=Player.black, **kwargs):
         game = GameState(game_board, next_player)
@@ -38,7 +38,7 @@ class AlphaAbaloneEncoder(Encoder):
         basic_plains = self._generate_basic_plains(game_board, next_player)
         plane_list = player_attack_plains + opp_attack_plains + basic_plains
         if self.data_format == 'channels_first':
-            return np.arrray(plane_list)
+            return np.array(plane_list)
         elif self.data_format == 'channels_last':
             return np.dstack(plane_list)
         else:
@@ -63,8 +63,8 @@ class AlphaAbaloneEncoder(Encoder):
         for length in [2, 3]:
             for direction in Direction:
                 key = length, direction.value
-                plain_kill[key] = np.zeros((1, self.max_xy, self.max_xy))
-                plain_push[key] = np.zeros((1, self.max_xy, self.max_xy))
+                plain_kill[key] = np.zeros((self.max_xy, self.max_xy))
+                plain_push[key] = np.zeros((self.max_xy, self.max_xy))
 
         # Fill plains
         self._move_list2np_arr(plain_kill, kill_moves)
@@ -82,15 +82,15 @@ class AlphaAbaloneEncoder(Encoder):
         return plain_kill_list + plain_push_list
 
     def _generate_opp_attack_plains(self, board, next_player=Player.black):
-        plain_opp_sumito_stones = np.zeros((1, self.max_xy, self.max_xy))
-        plain_danger_stones = np.zeros((1, self.max_xy, self.max_xy))
-        plain_danger_points = np.zeros((1, self.max_xy, self.max_xy))
-        plain_vuln_stones = {2: np.zeros((1, self.max_xy, self.max_xy)), 3: np.zeros((1, self.max_xy, self.max_xy))}
+        plain_opp_sumito_stones = np.zeros((self.max_xy, self.max_xy))
+        plain_danger_stones = np.zeros((self.max_xy, self.max_xy))
+        plain_danger_points = np.zeros((self.max_xy, self.max_xy))
+        plain_vuln_stones = {2: np.zeros((self.max_xy, self.max_xy)), 3: np.zeros((self.max_xy, self.max_xy))}
         plain_vuln_points = {}
         for length in [2, 3]:
             for direction in Direction:
                 key = length, direction.value
-                plain_vuln_points[key] = np.zeros((1, self.max_xy, self.max_xy))
+                plain_vuln_points[key] = np.zeros((self.max_xy, self.max_xy))
 
         # Fill array
         opp_sumito_stones, danger_stones, danger_points, vuln_stones, vuln_points = calc_opp_layers(board, next_player)
@@ -121,13 +121,13 @@ class AlphaAbaloneEncoder(Encoder):
             key = length, direction
             for stone in move.stones:
                 x, y = stone
-                np_arr[key][0, y, x] = 1
+                np_arr[key][y, x] = 1
 
     @staticmethod
     def _stone_list2np_arr(np_arr, stone_list):
         for stone in stone_list:
             x, y = stone
-            np_arr[0, y, x] = 1
+            np_arr[y, x] = 1
 
     def shape(self):
         if self.data_format == 'channels_first':
