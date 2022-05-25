@@ -45,7 +45,7 @@ function treeBoxes(urlService, jsonData)
 		width = 800 - margin.right - margin.left,
 		height = 400 - margin.top - margin.bottom;
 
-	var rectNode = { width : 120, height : 45, textMargin : 5 },
+	var rectNode = { width : 180, height : 125, textMargin : 5 },
 		tooltip = { width : 150, height : 40, textMargin : 5 };
 	var i = 0,
 		duration = 750,
@@ -214,9 +214,12 @@ function treeBoxes(urlService, jsonData)
 					return '<div style="width: '
 							+ (rectNode.width - rectNode.textMargin * 2) + 'px; height: '
 							+ (rectNode.height - rectNode.textMargin * 2) + 'px;" class="node-text wordwrap">'
-							+ '<b>' + d.nodeName + '</b><br><br>'
-							+ '<b>Code: </b>' + d.code + '<br>'
-							+ '<b>Version: </b>' + d.version + '<br>'
+							+ '<b>' + d.next_player + '</b><br/>'
+							+ 'Black: ' + d.black + '<br/>'
+							+ 'White: ' + d.white + '<br/>'
+							+ 'Rollouts: ' + d.rollout + '<br/>'
+							+ 'Explorable_moves: ' + d.explorable_moves + '<br/>'
+							+ 'Value: ' + d.value + '<br/>'
 							+ '</div>';
 				});
 
@@ -238,11 +241,11 @@ function treeBoxes(urlService, jsonData)
 		.attr('class', 'tooltip-text')
 		.style('fill', 'white')
 		.append("tspan")
-	    .text(function(d) {return 'Name: ' + d.name;})
+	    .text(function(d) {return 'Name: None';})
 	    .append("tspan")
 	    .attr('x', rectNode.width / 2 + tooltip.textMargin)
 	    .attr('dy', '1.5em')
-	    .text(function(d) {return 'Info: ' + d.label;});
+	    .text(function(d) {return 'Info: None';});
 
 		// Transition nodes to their new position.
 		var nodeUpdate = node.transition().duration(duration)

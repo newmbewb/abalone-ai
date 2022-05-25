@@ -1,3 +1,4 @@
+import json
 import math
 import random
 
@@ -101,6 +102,26 @@ class MCTSACNode(object):
 
     def is_terminal(self):
         return self.game_state.is_over()
+
+    def to_json(self):
+        d = dict()
+        if self.next_player == Player.black:
+            d['next_player'] = 'Black'
+            d['type'] = 'type1'
+        else:
+            d['next_player'] = 'White'
+            d['type'] = 'type2'
+        d['black'] = str(self.score[Player.black])
+        d['white'] = str(self.score[Player.white])
+        d['rollout'] = str(self.num_rollouts)
+        d['explorable_moves'] = str(self.explorable_moves)
+        d['value'] = str(self.critic_score)
+        children = []
+        for child in self.children:
+            children.append(child.to_json())
+        d['children'] = children
+        d['link'] = {"direction": "ASYN"}
+        return d
 
 
 def _uct_score(score, temp, log_rollout, node_rollout):
@@ -222,6 +243,9 @@ class MCTSACBot(Agent):
             # Update parents
             for parent, _ in critic_list:
                 parent.update()
+
+            tree = root.to_json()
+            print(json.dumps({'tree': tree}))
 
         # Select move
         probs = []
