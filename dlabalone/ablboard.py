@@ -1,4 +1,4 @@
-from dlabalone.abltypes import Player, Direction, add, sub, mul
+from dlabalone.abltypes import Player, Direction
 import copy
 
 
@@ -57,7 +57,7 @@ class Board(object):
         owner = self.grid[stone]
         if undo_move is not None:
             undo_move.append((stone, owner))
-        new_place = add(stone, direction)
+        new_place = stone + direction
 
         if not self.is_on_grid(new_place):
             # The stone dies
@@ -135,13 +135,13 @@ class GameState(object):
         if stone_count == 1:
             pass
         elif stone_count == 2:
-            string_direction = sub(stones[0], stones[1])
+            string_direction = stones[0] - stones[1]
             if not Direction.is_valid(string_direction):
                 return False
         elif stone_count == 3:
             stones.sort()
-            direction1 = sub(stones[0], stones[1])
-            direction2 = sub(stones[1], stones[2])
+            direction1 = stones[0] - stones[1]
+            direction2 = stones[1] - stones[2]
             if direction1 != direction2:
                 return False
             string_direction = direction1
@@ -159,12 +159,12 @@ class GameState(object):
         if push is None:
             push = [False]
         kill[0] = False
-        if string_len > 1 and (direction == string_direction or direction == mul(string_direction, -1)):
+        if string_len > 1 and (direction == string_direction or direction == (string_direction * -1)):
             cursor = stones[0]
             owner = self.board.grid[cursor]
             opp_len = 0
             while True:
-                cursor = add(cursor, direction)
+                cursor = cursor + direction
                 if cursor in stones:
                     continue
                 elif not self.board.is_on_grid(cursor):
@@ -186,7 +186,7 @@ class GameState(object):
                     assert False, "Cannot reach here"
         else:
             for stone in stones:
-                new_place = add(stone, direction)
+                new_place = stone + direction
                 if not self.board.is_on_grid(new_place):
                     return False
                 if new_place in self.board.grid:
@@ -266,7 +266,7 @@ class GameState(object):
 
             # For single stone move
             for direction in Direction:
-                next_point = add(point, direction.value)
+                next_point = point + direction.value
                 if self.board.is_on_grid(next_point) and next_point not in self.board.grid:
                     ret_normal.append(Move([point], direction.value))
 
@@ -277,7 +277,7 @@ class GameState(object):
                     stones = [point]
                     next_point = point
                     for i in range(1, length):
-                        next_point = add(next_point, string_direction)
+                        next_point = next_point + string_direction
                         stones.append(next_point)
 
                     # Check stones' player

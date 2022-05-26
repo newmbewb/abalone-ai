@@ -51,13 +51,13 @@ class Direction(Enum):
         assert False, "Invalid direction (int type)!"
 
 
-def sub(a, b):
-    return a - b
-
-
-def add(a, b):
-    return a + b
-
-
-def mul(t, a):
-    return t * a
+# def sub(a, b):
+#     return a - b
+#
+#
+# def add(a, b):
+#     return a + b
+#
+#
+# def mul(t, a):
+#     return t * a

@@ -2,7 +2,7 @@ import importlib
 import queue
 import numpy as np
 from dlabalone.ablboard import Board, Move
-from dlabalone.abltypes import Direction, add
+from dlabalone.abltypes import Direction
 from tensorflow.keras.utils import to_categorical
 
 __all__ = [
@@ -39,7 +39,7 @@ class Encoder:
                             invalid_move = True
                             # break
                         stones.append(next_stone)
-                        next_stone = add(next_stone, string_direction)
+                        next_stone = next_stone + string_direction
                     if invalid_move:
                         continue
                     stones.sort()
@@ -47,7 +47,7 @@ class Encoder:
                         # Check whether it is valid move direction
                         invalid_move = False
                         for stone in stones:
-                            next_point = add(stone, move_direction)
+                            next_point = stone + move_direction
                             if next_point not in Board.valid_grids:
                                 invalid_move = True
                                 break
