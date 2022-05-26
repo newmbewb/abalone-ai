@@ -12,13 +12,16 @@ class Player(Enum):
 
 
 # Directions
+max_xy = 9
+
+
 class Direction(Enum):
-    WEST = (-1, 0)
-    NORTHWEST = (-1, -1)
-    NORTHEAST = (0, -1)
-    EAST = (1, 0)
-    SOUTHEAST = (1, 1)
-    SOUTHWEST = (0, 1)
+    WEST = -1
+    NORTHWEST = max_xy*(-1)-1
+    NORTHEAST = max_xy*(-1)
+    EAST = 1
+    SOUTHEAST = max_xy+1
+    SOUTHWEST = max_xy
 
     @staticmethod
     def is_valid(direction):
@@ -49,16 +52,12 @@ class Direction(Enum):
 
 
 def sub(a, b):
-    x_diff = a[0] - b[0]
-    y_diff = a[1] - b[1]
-    return x_diff, y_diff
+    return a - b
 
 
 def add(a, b):
-    x_diff = a[0] + b[0]
-    y_diff = a[1] + b[1]
-    return x_diff, y_diff
+    return a + b
 
 
 def mul(t, a):
-    return t[0] * a, t[1] * a
+    return t * a

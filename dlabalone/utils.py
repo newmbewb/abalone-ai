@@ -36,8 +36,8 @@ def encode_board_str(board, next_player=Player.black):
     else:
         char_white = char_next_player
         char_black = char_other_player
-    for xy, player in board.grid.items():
-        x, y = xy
+    for index, player in board.grid.items():
+        x, y = Board.coord_index2xy(index)
         if player == Player.black:
             board_char[y][x] = char_black
         elif player == Player.white:
@@ -61,14 +61,12 @@ def decode_board_from_str(board_str, max_xy, next_player=Player.black):
     black_stones = 0
     white_stones = 0
     grid = {}
-    for i, c in enumerate(board_str):
-        y = i // max_xy
-        x = i % max_xy
+    for index, c in enumerate(board_str):
         if c == char_black:
-            grid[(x, y)] = Player.black
+            grid[index] = Player.black
             black_stones += 1
         elif c == char_white:
-            grid[(x, y)] = Player.white
+            grid[index] = Player.white
             white_stones += 1
     return Board(grid, 14 - black_stones, 14 - white_stones)
 
@@ -106,7 +104,6 @@ def save_file_board_move_pair(filename, pair_list, with_value=False):
     fd = open(filename, 'w')
     # Save metadata
     fd.write(f'{pair_list[0][0].size},{len(pair_list)}\n')
-    max_xy = pair_list[0][0].max_xy
     if with_value:
         for board, move, advantage, value in pair_list:
             fd.write(f'{encode_board_str(board)}{board_move_seperator}{str(move)}' +
@@ -168,7 +165,7 @@ def print_board(board):
         indent = abs(board.size - 1 - y)
         print(' ' * indent, end='')
         for x in range(max_xy):
-            point = x, y
+            point = Board.coord_xy2index((x, y))
             if not board.is_on_grid(point):
                 continue
             player = board.grid.get(point, None)

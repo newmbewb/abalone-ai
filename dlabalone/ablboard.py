@@ -3,12 +3,25 @@ import copy
 
 
 class Board(object):
-    max_xy = 0
-    size = 0
+    max_xy = 9
+    size = 5
     valid_grids = []
 
     @classmethod
+    def coord_index2xy(cls, point_int):
+        x = point_int % cls.max_xy
+        y = point_int // cls.max_xy
+        return x, y
+
+    @classmethod
+    def coord_xy2index(cls, xy):
+        x = xy[0]
+        y = xy[1]
+        return y * cls.max_xy + x
+
+    @classmethod
     def distance_from_center(cls, point):
+        point = Board.coord_index2xy(point)
         center = (cls.size - 1, cls.size - 1)
         if point == center:
             return 0
@@ -24,10 +37,9 @@ class Board(object):
         cls.size = size
         cls.max_xy = size * 2 - 1
         cls.valid_grids = []
-        for y in range(cls.max_xy):
-            for x in range(cls.max_xy):
-                if cls.is_on_grid((x, y)):
-                    cls.valid_grids.append((x, y))
+        for index in range(cls.max_xy * cls.max_xy):
+            if cls.is_on_grid(index):
+                cls.valid_grids.append(index)
 
     def __init__(self, grid=None, dead_stones_black=0, dead_stones_white=0):
         if grid is None:
@@ -74,7 +86,7 @@ class Board(object):
 
     @classmethod
     def is_on_grid(cls, point):
-        x, y = point
+        x, y = Board.coord_index2xy(point)
         if x < 0 or y < 0:
             return False
         elif x >= cls.max_xy or y >= cls.max_xy:
@@ -215,24 +227,24 @@ class GameState(object):
             player_down = Player.white
         # Black
         for x in range(0, 4 + 1):
-            point = x, 0
+            point = Board.coord_xy2index((x, 0))
             board.grid[point] = player_up
         for x in range(0, 5 + 1):
-            point = x, 1
+            point = Board.coord_xy2index((x, 1))
             board.grid[point] = player_up
         for x in range(2, 4 + 1):
-            point = x, 2
+            point = Board.coord_xy2index((x, 2))
             board.grid[point] = player_up
 
         # White
         for x in range(4, 6 + 1):
-            point = x, 6
+            point = Board.coord_xy2index((x, 6))
             board.grid[point] = player_down
         for x in range(3, 8 + 1):
-            point = x, 7
+            point = Board.coord_xy2index((x, 7))
             board.grid[point] = player_down
         for x in range(4, 8 + 1):
-            point = x, 8
+            point = Board.coord_xy2index((x, 8))
             board.grid[point] = player_down
 
         return GameState(board, Player.black)
@@ -247,8 +259,7 @@ class GameState(object):
         ret_normal = []
         if push_moves is None:
             push_moves = []
-        for x, y in type(self.board).valid_grids:
-            point = (x, y)
+        for point in type(self.board).valid_grids:
             player = self.board.grid.get(point, None)
             if player != self.next_player:
                 continue
@@ -339,5 +350,6 @@ class Move(object):
         stones = []
         for stone_str in tokens[1:]:
             x, y = stone_str.split(',')
-            stones.append((int(x), int(y)))
+            point = Board.coord_xy2index((x, y))
+            stones.append(point)
         return Move(stones, direction)
