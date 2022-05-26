@@ -321,6 +321,15 @@ class GameState(object):
         else:
             return black_remain / (white_remain + black_remain)
 
+    def can_last_attack(self):
+        if self.next_player == Player.black:
+            if self.board.dead_stones_white == 5:
+                return True
+        elif self.next_player == Player.white:
+            if self.board.dead_stones_black == 5:
+                return True
+        return False
+
 
 class Move(object):
     def __init__(self, stones, direction):

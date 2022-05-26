@@ -1,5 +1,5 @@
 from dlabalone.ablboard import Board, Move, GameState
-from dlabalone.abltypes import Direction, add, Player
+from dlabalone.abltypes import Direction, Player
 import os
 from dlabalone.utils import print_board, encode_board_str, load_file_board_move_pair, save_file_board_move_pair
 import numpy as np
@@ -65,7 +65,7 @@ class GamePopulator:
         else:
             assert False, 'Do not reach here'
 
-        return add(point, direction.value)
+        return point + direction.value
 
     def distance(self, point):
         if point == self.center:
