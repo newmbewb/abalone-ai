@@ -17,6 +17,7 @@ import tensorflow as tf
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 if __name__ == '__main__':
+    # tf.compat.v1.disable_eager_execution()
     multiprocessing.freeze_support()
     mode = 'policy'
     optimizer = SGD(learning_rate=0.1)
@@ -25,12 +26,13 @@ if __name__ == '__main__':
         dropout_rate = 0.10
     else:
         dropout_rate = 0.15
-    # encoder = get_encoder_by_name('alpha_abalone', 5, mode)
-    encoder = get_encoder_by_name('fourplane', 5, mode, data_format="channels_last")
-    generator = DataGenerator(encoder, 1024, '../data/data_with_value/dataset', '../data/encoded_data', 0.2)
+    encoder = get_encoder_by_name('alpha_abalone', 5, mode)
+    # encoder = get_encoder_by_name('fourplane', 5, mode, data_format="channels_last")
+    generator = DataGenerator(encoder, 1024, '../data/data_with_value/dataset', '../data/encoded_data', 0.2,
+                              max_train_npz=400)
 
-    model_generator = ac_simple1.ACSimple1(mode, dropout_rate=dropout_rate, data_format="channels_last")
-    # model_generator = ac_light1.ACLight1(mode, dropout_rate=dropout_rate, data_format="channels_last")
+    # model_generator = ac_simple1.ACSimple1(mode, dropout_rate=dropout_rate, data_format="channels_last")
+    model_generator = ac_light1.ACLight1(mode, dropout_rate=dropout_rate, data_format="channels_last")
     model = model_generator.model(encoder.shape(), encoder.num_moves(), optimizer=optimizer)
     # model = load_model('../data/checkpoints/backup/ACSimple1Policy_dropout0.1_AlphaAbaloneEncoder_epoch_14.h5')
 
@@ -39,7 +41,7 @@ if __name__ == '__main__':
     network_name = f'{model_generator.name()}_{encoder.name()}'
     print(network_name)
     print(f'optimizer: {optimizer}')
-    epochs = 10
+    epochs = 100000
     model.fit_generator(
         generator=generator.generate('train'),
         epochs=epochs,

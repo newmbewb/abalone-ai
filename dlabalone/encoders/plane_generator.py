@@ -1,11 +1,11 @@
-from dlabalone.abltypes import Direction, add, mul
+from dlabalone.abltypes import Direction
 
 
 def _can_push(board, stone, length, direction):
     # stone: the player's first stone
     # length: the length of the stone row
     player = board.grid.get(stone)
-    next_point = add(stone, direction)
+    next_point = stone + direction
     all_vuln_points = []
     first_next_point = next_point
     opp_player_count = 0
@@ -20,7 +20,7 @@ def _can_push(board, stone, length, direction):
         elif board.grid.get(next_point, None) == player.other:
             opp_player_count += 1
         all_vuln_points.append(next_point)
-        next_point = add(next_point, direction)
+        next_point = next_point + direction
     if board.grid.get(next_point, None) is None:
         return True, first_next_point, opp_player_count == length - 1, all_vuln_points
     else:
@@ -47,8 +47,7 @@ def calc_opp_layers(board, next_player):
     for length in [2, 3]:
         for direction in Direction:
             vuln_points[(length, direction.value)] = []
-    for x, y in type(board).valid_grids:
-        head_point = (x, y)
+    for head_point in type(board).valid_grids:
         player = board.grid.get(head_point, None)
         if player != opp_player:
             continue
@@ -58,7 +57,7 @@ def calc_opp_layers(board, next_player):
                 stones = [head_point]
                 next_point = head_point
                 for i in range(1, length):
-                    next_point = add(next_point, string_direction)
+                    next_point = next_point + string_direction
                     stones.append(next_point)
 
                 # Check stones' player
@@ -71,7 +70,7 @@ def calc_opp_layers(board, next_player):
                     continue
 
                 # Check whether it can push
-                directions = [string_direction, mul(string_direction, -1)]
+                directions = [string_direction, (string_direction * -1)]
                 first_stones = [stones[-1], stones[0]]
                 # for direction in directions:
                 for first_stone, direction in zip(first_stones, directions):

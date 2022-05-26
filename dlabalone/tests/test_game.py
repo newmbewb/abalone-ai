@@ -15,6 +15,7 @@ from keras.models import load_model
 import tensorflow as tf
 import cProfile
 import random
+import numpy as np
 
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
@@ -29,25 +30,25 @@ def test1():
     # bot = RandomKillBot()
     # bot = AlphaBetaBot(depth=3, width=100)
     # bot = MCTSBot(name='MCTS', num_rounds=1000, temperature=0.1)
-    # bot = MCTSBot(name='MCTS20000r0.01t', num_rounds=20000, temperature=0.01)
+    bot = MCTSBot(name='MCTS20000r0.01t', num_rounds=20000, temperature=0.01)
     # bot = network_bot_generator()
     # bot = mcts_with_critic_bot_generator()
-    encoder = get_encoder_by_name('fourplane', 5, None, data_format='channels_last')
-    critic = load_model(
-        '../../data/checkpoints/models/ACSimple1Value_dropout0.1_FourPlaneEncoder_channels_last_epoch_100.h5')
-    actor = load_model(
-        '../../data/checkpoints/models/ACSimple1Policy_dropout0.1_FourPlaneEncoder_channels_last_epoch_13.h5')
-    bot = MCTSACBot(encoder, actor, critic, num_rounds=5120)
+    # encoder = get_encoder_by_name('fourplane', 5, None, data_format='channels_last')
+    # critic = load_model(
+    #     '../../data/checkpoints/models/ACSimple1Value_dropout0.1_FourPlaneEncoder_channels_last_epoch_100.h5')
+    # actor = load_model(
+    #     '../../data/checkpoints/models/ACSimple1Policy_dropout0.1_FourPlaneEncoder_channels_last_epoch_13.h5')
+    # bot = MCTSACBot(encoder, actor, critic, width=3, num_rounds=100, batch_size=16)
     step = 0
     max_depths = []
     profiler.start('game')
     while not game.is_over():
         stat = {}
         game = game.apply_move(bot.select_move(game, stat=stat))
-        max_depths.append(stat['max_depth'])
+        # max_depths.append(stat['max_depth'])
         print(f'step: {step}')
         step += 1
-        if step == 10:
+        if step == 3:
             break
         # if step % 1 == 0:
         #     print(f'{step}')
@@ -142,6 +143,8 @@ def mcts_with_critic_bot_generator():
 
 if __name__ == '__main__':
     random.seed(0)
+    np.random.seed(0)
+    tf.random.set_seed(0)
     enable_profile = False
     print(f"Profile: {str(enable_profile)}")
     tf.debugging.disable_traceback_filtering()

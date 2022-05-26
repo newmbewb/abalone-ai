@@ -1,4 +1,8 @@
 from __future__ import absolute_import
+
+import functools
+
+import keras
 from keras.layers.core import Dense, Activation, Flatten
 from keras.layers.convolutional import Conv2D, ZeroPadding2D
 from keras.models import Sequential
@@ -26,7 +30,11 @@ class ACSimple1(Network):
         model = self._model(input_shape, num_classes, dropout_rate=self.dropout_rate)
         if optimizer is not None:
             if self.mode == 'policy':
-                model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+                top3_acc = functools.partial(keras.metrics.top_k_categorical_accuracy, k=3)
+                top3_acc.__name__ = 'top3_acc'
+                top5_acc = functools.partial(keras.metrics.top_k_categorical_accuracy, k=5)
+                top5_acc.__name__ = 'top5_acc'
+                model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy', top3_acc, top5_acc])
             elif self.mode == 'value':
                 model.compile(loss='mean_squared_error', optimizer=optimizer, metrics=['mean_squared_error'])
             else:

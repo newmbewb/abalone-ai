@@ -24,7 +24,7 @@ class Encoder:
         # Generate move list
         for string_length in range(1, 4):
             if string_length == 1:
-                string_directions = [(0, 0)]
+                string_directions = [0]
             else:
                 string_directions = list(map(lambda x: x.value,
                                              [Direction.EAST, Direction.SOUTHEAST, Direction.SOUTHWEST]))

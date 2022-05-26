@@ -11,7 +11,8 @@ class ThreePlaneEncoder(Encoder):
         self.num_planes = 3
         self.valid_map = np.zeros((self.max_xy, self.max_xy))
         self.data_format = data_format
-        for x, y in Board.valid_grids:
+        for index in Board.valid_grids:
+            x, y = Board.coord_index2xy(index)
             self.valid_map[y, x] = 1
         assert data_format == "channels_first" or data_format == "channels_last", \
             "data_format should be channels_first or channels_last"
@@ -23,7 +24,7 @@ class ThreePlaneEncoder(Encoder):
         map_next_player = np.zeros((self.max_xy, self.max_xy))
         map_opp_player = np.zeros((self.max_xy, self.max_xy))
         for point, player in board.grid.items():
-            x, y = point
+            x, y = Board.coord_index2xy(point)
             if player == next_player:
                 map_next_player[y, x] = 1
             else:
