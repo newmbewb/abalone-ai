@@ -20,6 +20,7 @@ eps = 1e-6
 
 class MCTSACNode(object):
     max_width = 5
+    min_width = 3
 
     def __init__(self, game_state, move, parent=None):
         self.game_state = game_state
@@ -76,19 +77,33 @@ class MCTSACNode(object):
         # if self.parent is not None:
         #     self.parent.update()
 
+    def get_valid_move_list(self, move_args, count, encoder):
+        ret = []
+        for move_index in move_args:
+            move = encoder.decode_move_index(move_index)
+            if self.game_state.is_valid_move(move.stones, move.direction):
+                ret.append(move)
+                if len(ret) >= count:
+                    break
+        return ret
+
     def update_unvisited_moves(self, encoder, move_probs):
         self.encoded_board = None  # Deleted not encoded board for memory reuse
         move_probs = np.clip(move_probs, eps, 1-eps)
         move_probs = move_probs / np.sum(move_probs)
         num_moves = encoder.num_moves()
-        ranked_moves = np.random.choice(np.arange(num_moves), num_moves, replace=False, p=move_probs)
-        self.unvisited_moves = []
-        for move_idx in ranked_moves:
-            move = encoder.decode_move_index(move_idx)
-            if self.game_state.is_valid_move(move.stones, move.direction):
-                self.unvisited_moves.append(move)
-                if len(self.unvisited_moves) >= self.max_width:
-                    break
+
+        # We coice only self.max_width * 4 moves, because of performance
+        # First choose try
+        ranked_moves = np.random.choice(np.arange(num_moves), self.max_width * 4, replace=False, p=move_probs)
+        self.unvisited_moves = self.get_valid_move_list(ranked_moves, self.max_width, encoder)
+
+        # If we need more child (at least one)
+        if len(self.unvisited_moves) < self.min_width:
+            print('Choice additional moves...')
+            ranked_moves = np.argsort(move_probs)
+            more_moves = self.get_valid_move_list(ranked_moves, self.min_width - len(self.unvisited_moves), encoder)
+            self.unvisited_moves += more_moves
 
     def get_unvisited_children(self, count):
         ret = []
@@ -129,13 +144,6 @@ def _uct_score(score, temp, log_rollout, node_rollout):
     return win_frac + temp * math.sqrt(log_rollout / node_rollout)
 
 
-# @tf.function(experimental_relax_shapes=True)
-# def _tf_helper(model, input_data):
-#     return model(input_data)
-def _tf_helper(model, input_data):
-    return model.predict_on_batch(input_data)
-
-
 class MCTSACBot(Agent):
     def __init__(self, encoder, actor, critic, name=None, width=5, num_rounds=5120, temperature=0.01, batch_size=128,
                  randomness=1):
@@ -148,6 +156,7 @@ class MCTSACBot(Agent):
         self.actor = actor
         self.critic = critic
         self.randomness = randomness
+        self.root_cache = None
 
     def _get_moves_to_eval(self, node, budget):
         '''
@@ -208,22 +217,32 @@ class MCTSACBot(Agent):
         return actor_list, critic_list
 
     def select_move(self, game_state, **kwargs):
-        root = MCTSACNode(game_state, None)
-        encoded_board = self.encoder.encode_board(root.game_state.board, root.next_player)
-        root.encoded_board = encoded_board
-        root.init_score(0)
-        remain_rounds = self.num_rounds
+        # Check whether we can reuse old tree
+        root = None
+        if self.root_cache is not None:
+            if self.root_cache.next_player == game_state.next_player:
+                if self.root_cache.game_state.is_same(game_state):
+                    root = self.root_cache
+            else:
+                for child in self.root_cache.children:
+                    if child.is_same(game_state):
+                        root = child
+                        break
+        if root is None:
+            # If we cannot reuse old tree
+            root = MCTSACNode(game_state, None)
+            encoded_board = self.encoder.encode_board(root.game_state.board, root.next_player)
+            root.encoded_board = encoded_board
+            root.init_score(0)
 
-        while remain_rounds > 0:
-            print(f'remain_rounds: {remain_rounds}')
+        while root.num_rollouts < self.num_rounds:
             # Get moves which we evaluate at this iteration
             actor_list, critic_list = self._get_moves_to_eval(root, self.batch_size)
-            remain_rounds -= sum(map(lambda x: x[1], critic_list))
 
             # Run actor and get moves for un-actored nodes
             if len(actor_list) > 0:
                 actor_input = np.array([node.encoded_board for node in actor_list])
-                actor_output = _tf_helper(self.actor, actor_input)
+                actor_output = self.actor.predict_on_batch(actor_input)
                 for node, moves in zip(actor_list, actor_output):
                     node.update_unvisited_moves(self.encoder, moves)
 
@@ -237,7 +256,7 @@ class MCTSACBot(Agent):
                 node.encoded_board = encoded_board
                 critic_input.append(encoded_board)
             critic_input = np.array(critic_input)
-            critic_output = _tf_helper(self.critic, critic_input)
+            critic_output = self.critic.predict_on_batch(critic_input)
             for node, value in zip(critic_nodes, critic_output):
                 node.init_score(value[0])
 
@@ -245,34 +264,35 @@ class MCTSACBot(Agent):
             for parent, _ in critic_list:
                 parent.update()
 
-            tree = root.to_json()
-            print(json.dumps({'tree': tree}))
+            # tree = root.to_json()
+            # print(json.dumps({'tree': tree}))
 
         # Select move
         probs = []
         for child in root.children:
             probs.append(self.score_to_winrate(child.score[game_state.next_player]))
-        print(probs)
+        # print(probs)
 
         # First round
         sorted_index = np.argsort(probs)
         selected_index = None
-        print(sorted_index)
+        # print(sorted_index)
         for index in sorted_index[::-1]:
-            print(index)
-            print(type(index))
             if random.random() < probs[index]:
                 selected_index = index
                 break
 
         if selected_index is not None:
-            return root.children[selected_index].move
+            chosen_child = root.children[selected_index]
+            # return root.children[selected_index].move
+        else:
+            # Second round
+            probs = np.clip(probs, eps, 1 - eps)
+            probs = probs / np.sum(probs)
+            chosen_child = np.random.choice(root.children, 1, p=probs)[0]
 
-        # Second round
-        probs = np.clip(probs, eps, 1 - eps)
-        probs = probs / np.sum(probs)
-        children = np.random.choice(root.children, 1, p=probs)
-        return children[0].move
+        self.root_cache = chosen_child
+        return chosen_child.move
 
     @staticmethod
     def score_to_winrate(score):
