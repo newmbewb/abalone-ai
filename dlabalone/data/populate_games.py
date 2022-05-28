@@ -9,18 +9,20 @@ class GamePopulator:
     def __init__(self, board_size):
         self.board_size = board_size
         Board.set_size(board_size)
-        self.center = (board_size - 1, board_size - 1)
+        self.center = Board.coord_xy2index((board_size - 1, board_size - 1))
 
         # Initialize rotation_map
         self.rotation_map = {}
-        for x, y in Board.valid_grids:
-            new_x, new_y = self._rotate_point((x, y))
-            self.rotation_map[(x, y)] = (new_x, new_y)
+        for index in Board.valid_grids:
+            new_index = self._rotate_point(index)
+            self.rotation_map[index] = new_index
 
     def rotate_numpy_board(self, board):
         new_board = np.array(board)
-        for x, y in Board.valid_grids:
-            new_x, new_y = self.rotation_map[(x, y)]
+        for index in Board.valid_grids:
+            new_index = self.rotation_map[index]
+            x, y = Board.coord_index2xy(index)
+            new_x, new_y = Board.coord_index2xy(new_index)
             new_board[new_y, new_x] = board[y, x]
         return new_board
 
@@ -33,8 +35,8 @@ class GamePopulator:
     def rotate_point_one_step(self, point):
         if point == self.center:
             return point
-        x, y = point
-        x_center, y_center = self.center
+        x, y = Board.coord_index2xy(point)
+        x_center, y_center = Board.coord_index2xy(self.center)
         if x < x_center and x >= y:
             part = 1
         elif x >= x_center and y < y_center:
@@ -70,8 +72,8 @@ class GamePopulator:
     def distance(self, point):
         if point == self.center:
             return 0
-        x, y = point
-        x_center, y_center = self.center
+        x, y = Board.coord_index2xy(point)
+        x_center, y_center = Board.coord_index2xy(self.center)
         if x <= x_center and y <= y_center or x >= x_center and y >= y_center:
             return max(abs(x - x_center), abs(y - y_center))
         else:
@@ -86,8 +88,7 @@ class GamePopulator:
     def _rotate_point_fast(self, point):
         return self.rotation_map[point]
 
-    def rotate_point(self, _point, count):
-        point = tuple(_point)
+    def rotate_point(self, point, count):
         for _ in range(count):
             point = self._rotate_point_fast(point)
         return point
@@ -147,8 +148,8 @@ class GamePopulator:
                 print('='*20)
                 print_board(rotate_board_final)
 
-    def validate(self, _game):
-        pair_list = load_file_board_move_pair(_game)
+    def validate(self, _game, with_value):
+        pair_list = load_file_board_move_pair(_game, with_value=with_value)
         board_start = pair_list[0][0]
         board_final = pair_list[-1][0]
         for rotate_count in range(1):
@@ -195,8 +196,13 @@ class GamePopulator:
                 # if 'draw' in game_name:
                 #     continue
                 pair_list = load_file_board_move_pair(game_name, with_value)
+                # ###################################################################################################
+                # for pair in pair_list:
+                #     print(pair[1].stones)
+                # ###################################################################################################
                 for rotate_count in range(6):
                     rotated_pair_list = self.rotate_pair_list(pair_list, rotate_count, with_value)
                     save_file_board_move_pair(populated_game_name % idx, rotated_pair_list, with_value)
-                    # validate(populated_game_name % idx)
+                    self.validate(populated_game_name % idx, with_value)
+                    print('validation end')
                     idx += 1

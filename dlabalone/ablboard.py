@@ -104,20 +104,16 @@ class GameState(object):
 
     def is_same(self, other_state):
         if self.next_player != other_state.next_player:
-            print(f'Wrong next_player!!! this: {self.next_player}, other: {other_state.next_player}')
             return False
         board = self.board
         other_board = other_state.board
         if board.dead_stones_white != other_board.dead_stones_white or \
                 board.dead_stones_black != other_board.dead_stones_black:
-            print('Wrong dead stone count!!!')
             return False
         if len(board.grid) != len(other_board.grid):
-            print('Wrong grid count!!!')
             return False
         for stone, owner in board.grid.items():
             if other_board.grid[stone] != owner:
-                print('Wrong grid!!!')
                 return False
         return True
 
@@ -349,7 +345,8 @@ class Move(object):
     def __str__(self):
         str_list = [str(Direction.to_int(self.direction))]
         for stone in self.stones:
-            str_list.append('%d,%d' % stone)
+            x, y = Board.coord_index2xy(stone)
+            str_list.append('%d,%d' % (x, y))
         return ':'.join(str_list)
 
     @staticmethod
@@ -359,6 +356,6 @@ class Move(object):
         stones = []
         for stone_str in tokens[1:]:
             x, y = stone_str.split(',')
-            point = Board.coord_xy2index((x, y))
+            point = Board.coord_xy2index((int(x), int(y)))
             stones.append(point)
         return Move(stones, direction)

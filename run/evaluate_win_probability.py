@@ -170,11 +170,11 @@ def simulate_games(device, q_board_info, encoder, model_path, output_filename, n
 
 exclude_list = ['data4096_000433.txt', 'data4096_000221.txt', 'data4096_000655.txt', 'data4096_000068.txt',
                 'data4096_000764.txt', 'data4096_000013.txt', 'data4096_000829.txt', 'data4096_000647.txt',
-                'data4096_000703.txt', 'data4096_000620.txt', 'data4096_000274.txt']
+                'data4096_000703.txt', 'data4096_000620.txt', 'data4096_000274.txt', 'data4096_000412.txt']
 if __name__ == '__main__':
     # Arguments
-    cpu_threads = 2
-    use_gpu = True
+    cpu_threads = 1
+    use_gpu = False
     num_games = 50  # recommendation: 50
     batch_size = 128
 
@@ -185,7 +185,9 @@ if __name__ == '__main__':
 
     file_batch_size = 1
     # Code start from here
-    file_list = os.listdir(dataset_dir)
+    file_list = set(os.listdir(dataset_dir))
+    file_list -= set(exclude_list)
+    file_list = list(file_list)
     random.shuffle(file_list)
     m = multiprocessing.Manager()
     # q_board_info = multiprocessing.Queue()
