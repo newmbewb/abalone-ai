@@ -18,8 +18,8 @@ if __name__ == '__main__':
     steps = 10000
     start_time = time.time()
     generate_encoder_trainset(FourPlaneEncoder(5, None), AlphaAbaloneEncoder(5, None), batch, steps,
-                              '../data/encoder_trainset')
-    # print(time.time() - start_time)
+                              '../data/data_with_value/dataset/', '../data/encoder_trainset')
+    print(time.time() - start_time)
     # train_set, valid_set = get_encoder_trainset_filelist('../data/encoder_trainset')
     # encoder_network = EncoderNetworkSimple1()
     # input_encoder = get_encoder_by_name('fourplane', 5)
