@@ -100,7 +100,6 @@ class MCTSACNode(object):
 
         # If we need more child (at least one)
         if len(self.unvisited_moves) < self.min_width:
-            print('Choice additional moves...')
             ranked_moves = np.argsort(move_probs)
             more_moves = self.get_valid_move_list(ranked_moves, self.min_width - len(self.unvisited_moves), encoder)
             self.unvisited_moves += more_moves

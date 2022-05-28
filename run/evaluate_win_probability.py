@@ -1,3 +1,4 @@
+import cProfile
 import copy
 import multiprocessing
 import os
@@ -65,7 +66,6 @@ def simulate_games(device, q_board_info, encoder, model_path, output_filename, n
     game_list = []
     pending_game_list = []
     stat = {}
-    move_selector = ExponentialMoveSelector(fixed_exponent=1)
 
     # Open output file
     fd_out = open(output_filename, 'w')
@@ -107,11 +107,34 @@ def simulate_games(device, q_board_info, encoder, model_path, output_filename, n
             for index in range(len(game_list)):
                 game_wrapper = game_list[index]
                 move_probs = predict_output[index]
-                moves_kill, moves_normal = game_wrapper.legal_moves(separate_kill=True)
-                if len(moves_kill) > 0 and game_wrapper.can_last_attack():
-                    move = moves_kill[0]
-                else:
-                    move, _ = move_selector(encoder, move_probs, moves_kill + moves_normal)
+
+                # Randomly select move based on the probability
+                # We do not use choice because of performance
+                ranked_moves = np.argsort(move_probs)[::-1]
+                move = None
+                p_accum = 0
+                for move_idx in range(ranked_moves.shape[0]-1, -1, -1):
+                    p = move_probs[move_idx]
+                    if random.random() - p_accum < p:
+                        move = encoder.decode_move_index(move_idx)
+                        if game_wrapper.game_state.is_valid_move(move.stones, move.direction):
+                            break
+                        else:
+                            move = None
+                    p_accum += p
+                # If non move is selected, we use np.random.choice
+                if move is None:
+                    eps = 1e-6
+                    move_probs = np.clip(move_probs, eps, 1 - eps)
+                    move_probs = move_probs / np.sum(move_probs)
+                    num_moves = encoder.num_moves()
+                    ranked_moves = np.random.choice(np.arange(num_moves), num_moves, replace=False, p=move_probs)
+                    for move_idx in ranked_moves:
+                        move = encoder.decode_move_index(move_idx)
+                        if game_wrapper.game_state.is_valid_move(move.stones, move.direction):
+                            break
+
+                # Apply move
                 game_wrapper.apply_move_lite(move)
                 if game_wrapper.is_over():
                     finished_games.append(index)
@@ -145,19 +168,22 @@ def simulate_games(device, q_board_info, encoder, model_path, output_filename, n
     fd_out.close()
 
 
+exclude_list = ['data4096_000433.txt', 'data4096_000221.txt', 'data4096_000655.txt', 'data4096_000068.txt',
+                'data4096_000764.txt', 'data4096_000013.txt', 'data4096_000829.txt', 'data4096_000647.txt',
+                'data4096_000703.txt', 'data4096_000620.txt', 'data4096_000274.txt']
 if __name__ == '__main__':
     # Arguments
-    cpu_threads = 3
+    cpu_threads = 2
     use_gpu = True
-    num_games = 100  # recommandation: 50
-    batch_size = 1024
+    num_games = 50  # recommendation: 50
+    batch_size = 128
 
     dataset_dir = '../data/data_with_value/dataset/'
     output_dir = '../data/rl_mcts/win_probability_evaluation'
     model_path = '../data/checkpoints/models/ACSimple1Policy_dropout0.1_FourPlaneEncoder_channels_last_epoch_13.h5'
     encoder = get_encoder_by_name('fourplane', 5, '', data_format='channels_last')
 
-    file_batch_size = 10
+    file_batch_size = 1
     # Code start from here
     file_list = os.listdir(dataset_dir)
     random.shuffle(file_list)
@@ -176,14 +202,21 @@ if __name__ == '__main__':
         # (q_board_info, encoder, model_generator, output_filename, num_games=50, batch_size=1024):
         args = []
         for i in range(cpu_threads):
-            output_filepath = os.path.join(output_dir, f'evaluated_win_probability_{random.random()}_{i}.txt')
+            output_filepath = os.path.join(output_dir, f'evaluated_win_probability_{random.random()}_cpu_{i}.txt')
             args.append((
-                '/cpu:0', q_board_info, encoder, model_path, output_filepath, num_games, batch_size))
+                '/device:CPU:0', q_board_info, encoder, model_path, output_filepath, num_games, batch_size))
         if use_gpu:
             threads = 1 + cpu_threads
             output_filepath = os.path.join(output_dir, f'evaluated_win_probability_{random.random()}_gpu.txt')
             args.append((
-                '/gpu:0', q_board_info, encoder, model_path, output_filepath, num_games, batch_size))
+                '/device:GPU:0', q_board_info, encoder, model_path, output_filepath, num_games, batch_size))
+            # ###############################################
+            # pr = cProfile.Profile()
+            # pr.enable()
+            # simulate_games(
+            #     '/device:GPU:0', q_board_info, encoder, model_path, output_filepath, num_games, batch_size)
+            # pr.disable()
+            # pr.dump_stats('profile.pstat')
         else:
             threads = cpu_threads
 
