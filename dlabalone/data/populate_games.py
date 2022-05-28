@@ -17,6 +17,53 @@ class GamePopulator:
             new_index = self._rotate_point(index)
             self.rotation_map[index] = new_index
 
+    ###################################
+    # Mirror game methods
+    def mirror_point(self, point):
+        x, y = Board.coord_index2xy(point)
+        a = self.board_size - 1 + y
+        new_x = a - x
+        return Board.coord_xy2index((new_x, y))
+
+    def mirror_move(self, move):
+        new_move_stones = []
+        for stone in move.stones:
+            new_move_stones.append(self.mirror_point(stone))
+        if move.direction == Direction.NORTHWEST.value:
+            new_move_direction = Direction.NORTHEAST.value
+        elif move.direction == Direction.NORTHEAST.value:
+            new_move_direction = Direction.NORTHWEST.value
+        elif move.direction == Direction.EAST.value:
+            new_move_direction = Direction.WEST.value
+        elif move.direction == Direction.SOUTHEAST.value:
+            new_move_direction = Direction.SOUTHWEST.value
+        elif move.direction == Direction.SOUTHWEST.value:
+            new_move_direction = Direction.SOUTHEAST.value
+        elif move.direction == Direction.WEST.value:
+            new_move_direction = Direction.EAST.value
+        else:
+            assert False, 'Do not reach here'
+        return Move(new_move_stones, new_move_direction)
+
+    def mirror_board(self, board):
+        new_board = Board()
+        for point, player in board.grid.items():
+            new_point = self.mirror_point(point)
+            new_board.grid[new_point] = player
+        return new_board
+
+    def mirror_pair_list(self, pair_list, with_value):
+        ret = []
+        if with_value:
+            for board, move, advantage, value in pair_list:
+                ret.append((self.mirror_board(board), self.mirror_move(move), advantage, value))
+        else:
+            for board, move in pair_list:
+                ret.append((self.mirror_board(board), self.mirror_move(move)))
+        return ret
+
+    ###################################
+    # Rotate numpy methods
     def rotate_numpy_board(self, board):
         new_board = np.array(board)
         for index in Board.valid_grids:
@@ -32,6 +79,8 @@ class GamePopulator:
             ret[i] = self.rotate_numpy_board(board)
         return ret
 
+    ###################################
+    # Rotate game methods
     def rotate_point_one_step(self, point):
         if point == self.center:
             return point
@@ -196,13 +245,15 @@ class GamePopulator:
                 # if 'draw' in game_name:
                 #     continue
                 pair_list = load_file_board_move_pair(game_name, with_value)
-                # ###################################################################################################
-                # for pair in pair_list:
-                #     print(pair[1].stones)
-                # ###################################################################################################
                 for rotate_count in range(6):
+                    # Rotate
                     rotated_pair_list = self.rotate_pair_list(pair_list, rotate_count, with_value)
                     save_file_board_move_pair(populated_game_name % idx, rotated_pair_list, with_value)
                     self.validate(populated_game_name % idx, with_value)
-                    print('validation end')
                     idx += 1
+                    # Mirror
+                    mirrored_pair_list = self.mirror_pair_list(rotated_pair_list, with_value)
+                    save_file_board_move_pair(populated_game_name % idx, mirrored_pair_list, with_value)
+                    self.validate(populated_game_name % idx, with_value)
+                    idx += 1
+                    print('validation end')
