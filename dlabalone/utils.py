@@ -1,6 +1,6 @@
 from dlabalone.ablboard import Move, Board
 import time
-from dlabalone.abltypes import Player
+from dlabalone.abltypes import Player, Direction
 
 move_list_delimiter = '&'
 board_move_seperator = '&'
@@ -123,8 +123,17 @@ def load_file_board_move_pair(filename, with_value=False, recover_player=False):
     next_player = Player.black
     for line in fd:
         if with_value:
-            board_str, move_str, advantage, value = line.strip().split(board_move_seperator)
-            pair_list.append((decode_board_from_str(board_str, max_xy, next_player), Move.str_to_move(move_str),
+            splitted = line.strip().split(board_move_seperator)
+            if len(splitted) == 4:
+                board_str, move_str, advantage, value = splitted
+                move = Move.str_to_move(move_str)
+            elif len(splitted) == 3:
+                board_str, _, value = splitted
+                move = Move([0], Direction.SOUTHEAST.value)
+                advantage = 0
+            else:
+                assert False, 'Not reachable'
+            pair_list.append((decode_board_from_str(board_str, max_xy, next_player), move,
                               float(advantage), float(value)))
         else:
             board_str, move_str = line.strip().split(board_move_seperator)
