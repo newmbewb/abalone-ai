@@ -128,7 +128,9 @@ def load_file_board_move_pair(filename, with_value=False, recover_player=False):
                 board_str, move_str, advantage, value = splitted
                 move = Move.str_to_move(move_str)
             elif len(splitted) == 3:
-                board_str, _, value = splitted
+                board_str, _, winrate = splitted
+                winrate = float(winrate)
+                value = (winrate - 0.5) * 2
                 move = Move([0], Direction.SOUTHEAST.value)
                 advantage = 0
             else:
