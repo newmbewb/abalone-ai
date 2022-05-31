@@ -249,11 +249,10 @@ class GamePopulator:
                     # Rotate
                     rotated_pair_list = self.rotate_pair_list(pair_list, rotate_count, with_value)
                     save_file_board_move_pair(populated_game_name % idx, rotated_pair_list, with_value)
-                    self.validate(populated_game_name % idx, with_value)
+                    # self.validate(populated_game_name % idx, with_value)
                     idx += 1
                     # Mirror
                     mirrored_pair_list = self.mirror_pair_list(rotated_pair_list, with_value)
                     save_file_board_move_pair(populated_game_name % idx, mirrored_pair_list, with_value)
-                    self.validate(populated_game_name % idx, with_value)
+                    # self.validate(populated_game_name % idx, with_value)
                     idx += 1
-                    print('validation end')

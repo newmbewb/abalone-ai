@@ -11,12 +11,16 @@ from dlabalone.utils import load_file_board_move_pair
 
 
 class AlphaAbaloneEncoder(Encoder):
-    def __init__(self, board_size, mode, data_format="channels_last"):
+    def __init__(self, board_size, mode=None, data_format="channels_last", with_basic_plains=True):
         super().__init__(board_size, mode)
-        self.num_planes = 45
+        if with_basic_plains:
+            self.num_planes = 45
+        else:
+            self.num_planes = 45 - 4
         self.valid_map = np.zeros((self.max_xy, self.max_xy))
         self.invalid_map = np.ones((self.max_xy, self.max_xy))
         self.data_format = data_format
+        self.with_basic_plains = with_basic_plains
         for index in Board.valid_grids:
             x, y = Board.coord_index2xy(index)
             self.valid_map[y, x] = 1
@@ -36,7 +40,10 @@ class AlphaAbaloneEncoder(Encoder):
             kill_moves, normal_moves = game.legal_moves(separate_kill=True, push_moves=push_moves)
         player_attack_plains = self._generate_player_attack_plains(kill_moves, push_moves)
         opp_attack_plains = self._generate_opp_attack_plains(game_board, next_player)
-        basic_plains = self._generate_basic_plains(game_board, next_player)
+        if self.with_basic_plains:
+            basic_plains = self._generate_basic_plains(game_board, next_player)
+        else:
+            basic_plains = []
         plane_list = player_attack_plains + opp_attack_plains + basic_plains
         if self.data_format == 'channels_first':
             return np.array(plane_list)
@@ -139,5 +146,5 @@ class AlphaAbaloneEncoder(Encoder):
             return None
 
 
-def create(board_size, mode, **kwargs):
-    return AlphaAbaloneEncoder(board_size, mode, **kwargs)
+def create(board_size, *args, **kwargs):
+    return AlphaAbaloneEncoder(board_size, *args, **kwargs)

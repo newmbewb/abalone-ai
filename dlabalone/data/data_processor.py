@@ -95,12 +95,12 @@ def npz_preloader(encoder, q_infile, q_data):
 
 
 class DataGenerator:
-    def __init__(self, encoder, batch, dataset_dir, out_dir, test_ratio, out_filename_format=None, overwrite=False,
-                 max_train_npz=None):
+    def __init__(self, encoder, batch, dataset_dir, out_dir, dataset_type, test_ratio, out_filename_format=None,
+                 overwrite=False, max_train_npz=None):
         self.encoder = encoder
         multiprocessing.freeze_support()
         if out_filename_format is None:
-            out_filename_format = f'{encoder.name()}_{batch}batch_{test_ratio}/%s_%s.npz'
+            out_filename_format = f'{encoder.name()}_{dataset_type}_{batch}batch_{test_ratio}/%s_%s.npz'
         out_filename_format = os.path.join(out_dir, out_filename_format)
         convert_dataset_to_npz(encoder, batch, dataset_dir, out_filename_format, test_ratio, overwrite)
         self.out_filename_format = out_filename_format

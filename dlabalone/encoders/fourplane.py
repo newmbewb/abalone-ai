@@ -48,5 +48,5 @@ class FourPlaneEncoder(Encoder):
             return None
 
 
-def create(board_size, mode, **kwargs):
-    return FourPlaneEncoder(board_size, mode, **kwargs)
+def create(board_size, *args, **kwargs):
+    return FourPlaneEncoder(board_size, *args, **kwargs)
