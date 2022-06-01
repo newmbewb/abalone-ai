@@ -86,6 +86,7 @@ class MCTSACNode(object):
 
     def update_unvisited_moves(self, encoder, move_probs):
         self.encoded_board = None  # Deleted not encoded board for memory reuse
+        move_probs = np.nan_to_num(move_probs)
         move_probs = np.clip(move_probs, eps, 1-eps)
         move_probs = move_probs / np.sum(move_probs)
         num_moves = encoder.num_moves()
