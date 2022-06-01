@@ -12,6 +12,7 @@ from keras.models import load_model
 from dlabalone.ablboard import GameState, Board
 from dlabalone.abltypes import Player
 from dlabalone.encoders.base import get_encoder_by_name
+from dlabalone.networks.base import prepare_tf_custom_objects
 from dlabalone.rl.move_selectors.exponential import ExponentialMoveSelector
 from dlabalone.rl.simulate import experience_simulation
 from dlabalone.rl.trainer import predict_convertor_single_model
@@ -63,6 +64,7 @@ class GameWrapper(object):
 
 def simulate_games(device, q_board_info, encoder, model_path, output_filename, num_games, batch_size):
     Board.set_size(5)
+    prepare_tf_custom_objects()
     game_list = []
     pending_game_list = []
     stat = {}
@@ -170,17 +172,22 @@ def simulate_games(device, q_board_info, encoder, model_path, output_filename, n
 
 exclude_list = ['data4096_000433.txt', 'data4096_000221.txt', 'data4096_000655.txt', 'data4096_000068.txt',
                 'data4096_000764.txt', 'data4096_000013.txt', 'data4096_000829.txt', 'data4096_000647.txt',
-                'data4096_000703.txt', 'data4096_000620.txt', 'data4096_000274.txt', 'data4096_000412.txt']
+                'data4096_000703.txt', 'data4096_000620.txt', 'data4096_000274.txt', 'data4096_000412.txt',
+                'data4096_000787.txt', 'data4096_000451.txt', 'data4096_000724.txt', 'data4096_000879.txt',
+                'data4096_000870.txt', 'data4096_000158.txt',
+
+                'data4096_000635.txt',]
 if __name__ == '__main__':
     # Arguments
     cpu_threads = 1
-    use_gpu = False
+    use_gpu = True
     num_games = 50  # recommendation: 50
     batch_size = 128
 
     dataset_dir = '../data/data_with_value/dataset/'
     output_dir = '../data/rl_mcts/win_probability_evaluation'
-    model_path = '../data/checkpoints/models/ACSimple1Policy_dropout0.1_FourPlaneEncoder_channels_last_epoch_13.h5'
+    model_path = '../data/checkpoints/models/ACSimple1Policy_dropout0.3_FourPlaneEncoder_channels_last_epoch_100.h5'
+
     encoder = get_encoder_by_name('fourplane', 5, '', data_format='channels_last')
 
     file_batch_size = 1

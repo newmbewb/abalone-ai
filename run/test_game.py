@@ -1,5 +1,6 @@
 import multiprocessing
 import os
+import time
 
 from dlabalone.ablboard import GameState
 from dlabalone.abltypes import Player
@@ -10,6 +11,7 @@ from dlabalone.agent.random_kill_first import RandomKillBot
 from dlabalone.agent.alphabeta import AlphaBetaBot
 from dlabalone.agent.mcts import MCTSBot
 from dlabalone.encoders.base import get_encoder_by_name
+from dlabalone.networks.base import prepare_tf_custom_objects
 from dlabalone.utils import print_board, encode_board_str, profiler
 from keras.models import load_model
 import tensorflow as tf
@@ -30,15 +32,19 @@ def test1():
     # bot = RandomKillBot()
     # bot = AlphaBetaBot(depth=3, width=100)
     # bot = MCTSBot(name='MCTS', num_rounds=1000, temperature=0.1)
-    bot = MCTSBot(name='MCTS20000r0.01t', num_rounds=20000, temperature=0.01)
+    # bot = MCTSBot(name='MCTS20000r0.01t', num_rounds=20000, temperature=0.01)
     # bot = network_bot_generator()
     # bot = mcts_with_critic_bot_generator()
+    # prepare_tf_custom_objects()
     # encoder = get_encoder_by_name('fourplane', 5, None, data_format='channels_last')
-    # critic = load_model(
-    #     '../../data/checkpoints/models/ACSimple1Value_dropout0.1_FourPlaneEncoder_channels_last_epoch_100.h5')
     # actor = load_model(
-    #     '../../data/checkpoints/models/ACSimple1Policy_dropout0.1_FourPlaneEncoder_channels_last_epoch_13.h5')
-    # bot = MCTSACBot(encoder, actor, critic, width=3, num_rounds=100, batch_size=16)
+    #     '../data/rl_mcts/generation00/ACSimple1Policy_dropout0.3_FourPlaneEncoder_channels_last_epoch_100.h5')
+    # critic = load_model(
+    #     '../data/rl_mcts/generation00/ACSimple1Value_dropout0.5_FourPlaneEncoder_channels_last_epoch_100.h5')
+    # bot = MCTSACBot(encoder, actor, critic, name="bot_mcts_ac", width=3, num_rounds=300, temperature=0.01)
+    bot = mcts_ac_bot_generator1()
+    print(bot.name)
+
     step = 0
     max_depths = []
     profiler.start('game')
@@ -48,7 +54,7 @@ def test1():
         # max_depths.append(stat['max_depth'])
         print(f'step: {step}')
         step += 1
-        if step == 3:
+        if step == 20:
             break
         # if step % 1 == 0:
         #     print(f'{step}')
@@ -63,6 +69,7 @@ def test1():
 
 
 def run_game(idx, bot_pair):
+    print(f'new worker {idx}')
     bot_black, bot_white = bot_pair
     if hasattr(bot_black, '__call__'):
         bot_black = bot_black()
@@ -78,6 +85,7 @@ def run_game(idx, bot_pair):
         else:
             game = game.apply_move(bot_white.select_move(game))
         step += 1
+        # print(f'step: {step}')
 
         # If a same board repeats too much, the game is draw
         board_str = encode_board_str(game.board)
@@ -90,6 +98,7 @@ def run_game(idx, bot_pair):
         if step >= 1000:
             is_draw = True
             break
+    print(f'new worker {idx} finish')
 
     if is_draw:
         winner_name = draw_name
@@ -129,16 +138,34 @@ def compare_bot(bot1, bot2, run_iter=100, threads=None):
 
 
 def network_bot_generator():
+    prepare_tf_custom_objects()
     encoder = get_encoder_by_name('fourplane', 5, None, data_format='channels_last')
     return NetworkNaiveBot(
-        encoder, '../../data/checkpoints/models/ACSimple1Policy_dropout0.1_FourPlaneEncoder_channels_last_epoch_13.h5',
+        encoder, '../data/rl_mcts/generation00/ACSimple1Policy_dropout0.3_FourPlaneEncoder_channels_last_epoch_100.h5',
+        # selector='exponential')
         selector='greedy')
 
 
-def mcts_with_critic_bot_generator():
+def mcts_ac_bot_generator1():
+    prepare_tf_custom_objects()
+    # tf.compat.v1.disable_eager_execution()
     encoder = get_encoder_by_name('fourplane', 5, None, data_format='channels_last')
-    critic = load_model('../../data/checkpoints/models/ACSimple1Value_dropout0.1_FourPlaneEncoder_channels_last_epoch_100.h5')
-    return MCTSBotCritic(encoder, critic, selector='greedy', num_rounds=100, temperature=0.01)
+    actor = load_model(
+        '../data/rl_mcts/generation00/ACSimple1Policy_dropout0.3_FourPlaneEncoder_channels_last_epoch_100.h5')
+    critic = load_model(
+        '../data/rl_mcts/generation00/ACSimple1Value_dropout0.5_FourPlaneEncoder_channels_last_epoch_100.h5')
+    return MCTSACBot(encoder, actor, critic, name="bot_mcts_ac_w3_r2000", width=3, num_rounds=2000, temperature=0.01)
+
+
+def mcts_ac_bot_generator2():
+    prepare_tf_custom_objects()
+    # tf.compat.v1.disable_eager_execution()
+    encoder = get_encoder_by_name('fourplane', 5, None, data_format='channels_last')
+    actor = load_model(
+        '../data/rl_mcts/generation00/ACSimple1Policy_dropout0.3_FourPlaneEncoder_channels_last_epoch_100.h5')
+    critic = load_model(
+        '../data/rl_mcts/generation00/ACSimple1Value_dropout0.5_FourPlaneEncoder_channels_last_epoch_100.h5')
+    return MCTSACBot(encoder, actor, critic, name="bot_mcts_ac_w3_r3000", width=3, num_rounds=3000, temperature=0.01)
 
 
 if __name__ == '__main__':
@@ -149,25 +176,27 @@ if __name__ == '__main__':
     print(f"Profile: {str(enable_profile)}")
     tf.debugging.disable_traceback_filtering()
     tf.compat.v1.disable_eager_execution()
-    pr = None
+
+    pr = []
     if enable_profile:
-        pr = cProfile.Profile()
-        pr.enable()
+        pr.append(cProfile.Profile())
+        pr[0].enable()
 
     ####################################
     profiler.start('game')
 
-    if True:
-    # if False:
+    # if True:
+    if False:
         test1()
     else:
-        bot_A = MCTSBot(name='MCTS20000r0.01t', num_rounds=20000, temperature=0.01)
-        bot_B = network_bot_generator
-        compare_bot(bot_A, bot_B, run_iter=10, threads=2)
+        bot_A = mcts_ac_bot_generator2
+        bot_B = mcts_ac_bot_generator2
+        # compare_bot(bot_A, bot_B, run_iter=10, threads=2)
+        compare_bot(bot_A, bot_B, run_iter=50, threads=3)
 
     profiler.end('game')
     profiler.print('game')
 
     if enable_profile:
-        pr.disable()
-        pr.dump_stats('profile.pstat')
+        pr[0].disable()
+        pr[0].dump_stats('profile.pstat')

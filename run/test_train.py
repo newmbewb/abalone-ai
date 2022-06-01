@@ -14,14 +14,14 @@ from keras.layers.core import Dense
 import os
 import tensorflow as tf
 
-from dlabalone.networks.base import compile_model
+from dlabalone.networks.base import compile_model, prepare_tf_custom_objects
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 if __name__ == '__main__':
     # tf.compat.v1.disable_eager_execution()
     multiprocessing.freeze_support()
-    mode = 'policy'
+    mode = 'value'
     # optimizer = SGD(learning_rate=0.1)
 
     if mode == 'policy':
@@ -42,10 +42,12 @@ if __name__ == '__main__':
         encoder, 1024, '../data/rl_mcts/dataset', '../data/rl_mcts/encoded_data', mode, 0.2)
 
     # Simple network
+    prepare_tf_custom_objects()
     model_generator = ac_simple1.ACSimple1(mode, dropout_rate=dropout_rate, data_format="channels_last")
     # model_generator = ac_light1.ACLight1(mode, dropout_rate=dropout_rate, data_format="channels_last")
     model = model_generator.model(encoder.shape(), encoder.num_moves(), optimizer=optimizer)
     network_name = f'{model_generator.name()}_{encoder.name()}'
+
 
     # # Stack encoder model
     # encoder_model = load_model('../data/checkpoints/models/EncoderNetworkConcatSimple2_FourPlaneEncoder_channels_last_AlphaAbaloneEncoder_channels_last_epoch_1.h5')

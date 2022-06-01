@@ -34,8 +34,7 @@ class NetworkNaiveBot(Agent):
         # Load selector
         if isinstance(selector, str):
             if selector == 'exponential':
-                self.selector = ExponentialMoveSelector(temperature=0)
-                self.selector.max_exponential = 3
+                self.selector = ExponentialMoveSelector(fixed_exponent=3)
             elif selector == 'greedy':
                 self.selector = EpsilonGreedyMoveSelector(temperature=0)
             else:

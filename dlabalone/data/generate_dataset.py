@@ -15,7 +15,6 @@ def generate_dataset(game_dir, data_per_file, dataset_file):
         fd = open(file)
         size, line = fd.readline().split(',')
         size = int(size)
-        line_count = int(line)
         for line in fd:
             dataset.append(line)
     random.shuffle(dataset)
