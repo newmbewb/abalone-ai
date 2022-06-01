@@ -13,7 +13,7 @@ from tensorflow.keras.optimizers import SGD
 import tensorflow.keras.backend as K
 from tensorflow.keras.utils import get_custom_objects
 
-from dlabalone.networks.base import Network
+from dlabalone.networks.base import Network, prepare_tf_custom_objects
 
 
 class ACSimple1(Network):
@@ -32,17 +32,8 @@ class ACSimple1(Network):
         else:
             assert False, "Wrong mode"
         super().__init__(name)
+        prepare_tf_custom_objects()
 
-        # Define mish activation
-        class Mish(Activation):
-            def __init__(self, activation, **kwargs):
-                super(Mish, self).__init__(activation, **kwargs)
-                self.__name__ = 'Mish'
-
-        def mish(x):
-            return x * K.tanh(K.softplus(x))
-
-        get_custom_objects().update({'mish': Mish(mish)})
 
     def model(self, input_shape, num_classes, optimizer=None):
         if self.mode == 'policy':

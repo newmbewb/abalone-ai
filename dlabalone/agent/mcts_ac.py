@@ -7,7 +7,6 @@ import tensorflow as tf
 
 from dlabalone.abltypes import Player
 from dlabalone.agent.base import Agent
-from dlabalone.agent.random_kill_first import RandomKillBot
 
 
 __all__ = [
@@ -42,23 +41,21 @@ class MCTSACNode(object):
     def update(self):
         assert self.critic_score is not None
         # Initialize
-        self.num_rollouts = 1
         if self.unvisited_moves is None:
             self.explorable_moves = self.max_width
         else:
             self.explorable_moves = len(self.unvisited_moves)
         next_player = self.next_player
-        if len(self.children) == 0:
-            max_score = self.critic_score
-        else:
-            max_score = -99999
-            # Accumulate children stats
-            for child in self.children:
-                self.num_rollouts += child.num_rollouts
-                self.explorable_moves += child.explorable_moves
-                max_score = max(max_score, child.score[next_player])
-        self.score[next_player] = max_score
-        self.score[next_player.other] = -max_score
+        score_accum = self.critic_score
+        self.num_rollouts = 1
+        for child in self.children:
+            self.num_rollouts += child.num_rollouts
+            self.explorable_moves += child.explorable_moves
+            score_accum += child.score[next_player] * child.num_rollouts
+        score = score_accum / self.num_rollouts
+
+        self.score[next_player] = score
+        self.score[next_player.other] = -score
 
         if self.parent is not None:
             self.parent.update()
@@ -93,14 +90,14 @@ class MCTSACNode(object):
         move_probs = move_probs / np.sum(move_probs)
         num_moves = encoder.num_moves()
 
-        # We coice only self.max_width * 4 moves, because of performance
+        # We choose only self.max_width * 4 moves, because of performance
         # First choose try
         ranked_moves = np.random.choice(np.arange(num_moves), self.max_width * 4, replace=False, p=move_probs)
         self.unvisited_moves = self.get_valid_move_list(ranked_moves, self.max_width, encoder)
 
         # If we need more child (at least one)
         if len(self.unvisited_moves) < self.min_width:
-            ranked_moves = np.argsort(move_probs)
+            ranked_moves = np.random.choice(np.arange(num_moves), num_moves, replace=False, p=move_probs)
             more_moves = self.get_valid_move_list(ranked_moves, self.min_width - len(self.unvisited_moves), encoder)
             self.unvisited_moves += more_moves
 
@@ -125,11 +122,11 @@ class MCTSACNode(object):
         else:
             d['next_player'] = 'White'
             d['type'] = 'type2'
-        d['black'] = str(self.score[Player.black])
-        d['white'] = str(self.score[Player.white])
+        d['black'] = f'{self.score[Player.black]:.10f}'
+        d['white'] = f'{self.score[Player.white]:.10f}'
         d['rollout'] = str(self.num_rollouts)
         d['explorable_moves'] = str(self.explorable_moves)
-        d['value'] = str(self.critic_score)
+        d['critic_score'] = f'{self.critic_score:.10f}'
         children = []
         for child in self.children:
             children.append(child.to_json())
@@ -145,7 +142,7 @@ def _uct_score(score, temp, log_rollout, node_rollout):
 
 class MCTSACBot(Agent):
     def __init__(self, encoder, actor, critic, name=None, width=5, num_rounds=5120, temperature=0.01, batch_size=128,
-                 randomness=1):
+                 exponent=3):
         super().__init__(name)
         MCTSACNode.max_width = width
         self.num_rounds = num_rounds
@@ -154,7 +151,7 @@ class MCTSACBot(Agent):
         self.encoder = encoder
         self.actor = actor
         self.critic = critic
-        self.randomness = randomness
+        self.exponent = exponent
         self.root_cache = None
 
     def _get_moves_to_eval(self, node, budget):
@@ -224,7 +221,7 @@ class MCTSACBot(Agent):
                     root = self.root_cache
             else:
                 for child in self.root_cache.children:
-                    if child.is_same(game_state):
+                    if child.game_state.is_same(game_state):
                         root = child
                         break
         if root is None:
@@ -272,23 +269,28 @@ class MCTSACBot(Agent):
             probs.append(self.score_to_winrate(child.score[game_state.next_player]))
         # print(probs)
 
-        # First round
-        sorted_index = np.argsort(probs)
-        selected_index = None
-        # print(sorted_index)
-        for index in sorted_index[::-1]:
-            if random.random() < probs[index]:
-                selected_index = index
-                break
+        probs = np.array(probs) ** self.exponent
+        probs = np.clip(probs, eps, 1 - eps)
+        probs = probs / np.sum(probs)
+        chosen_child = np.random.choice(root.children, 1, p=probs)[0]
 
-        if selected_index is not None:
-            chosen_child = root.children[selected_index]
-            # return root.children[selected_index].move
-        else:
-            # Second round
-            probs = np.clip(probs, eps, 1 - eps)
-            probs = probs / np.sum(probs)
-            chosen_child = np.random.choice(root.children, 1, p=probs)[0]
+        # # First round
+        # sorted_index = np.argsort(probs)
+        # selected_index = None
+        # # print(sorted_index)
+        # for index in sorted_index[::-1]:
+        #     if random.random() < probs[index]:
+        #         selected_index = index
+        #         break
+        #
+        # if selected_index is not None:
+        #     chosen_child = root.children[selected_index]
+        # else:
+        #     # Second round
+        #     probs = probs ** self.exponent
+        #     probs = np.clip(probs, eps, 1 - eps)
+        #     probs = probs / np.sum(probs)
+        #     chosen_child = np.random.choice(root.children, 1, p=probs)[0]
 
         self.root_cache = chosen_child
         return chosen_child.move

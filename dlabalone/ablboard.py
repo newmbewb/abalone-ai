@@ -113,7 +113,8 @@ class GameState(object):
         if len(board.grid) != len(other_board.grid):
             return False
         for stone, owner in board.grid.items():
-            if other_board.grid[stone] != owner:
+            other_owner = other_board.grid.get(stone, None)
+            if other_owner != owner:
                 return False
         return True
 
