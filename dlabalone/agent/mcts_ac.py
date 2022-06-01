@@ -104,6 +104,8 @@ class MCTSACNode(object):
     def get_unvisited_children(self, count):
         ret = []
         for _ in range(count):
+            if len(self.unvisited_moves) == 0:
+                break
             new_move = self.unvisited_moves.pop(0)
             new_game_state = self.game_state.apply_move(new_move)
             new_node = MCTSACNode(new_game_state, new_move, self)
@@ -145,6 +147,7 @@ class MCTSACBot(Agent):
                  exponent=3):
         super().__init__(name)
         MCTSACNode.max_width = width
+        MCTSACNode.min_width = width
         self.num_rounds = num_rounds
         self.temperature = temperature
         self.batch_size = batch_size
@@ -269,28 +272,18 @@ class MCTSACBot(Agent):
             probs.append(self.score_to_winrate(child.score[game_state.next_player]))
         # print(probs)
 
-        probs = np.array(probs) ** self.exponent
-        probs = np.clip(probs, eps, 1 - eps)
-        probs = probs / np.sum(probs)
-        chosen_child = np.random.choice(root.children, 1, p=probs)[0]
-
-        # # First round
-        # sorted_index = np.argsort(probs)
-        # selected_index = None
-        # # print(sorted_index)
-        # for index in sorted_index[::-1]:
-        #     if random.random() < probs[index]:
-        #         selected_index = index
-        #         break
-        #
-        # if selected_index is not None:
-        #     chosen_child = root.children[selected_index]
-        # else:
-        #     # Second round
-        #     probs = probs ** self.exponent
-        #     probs = np.clip(probs, eps, 1 - eps)
-        #     probs = probs / np.sum(probs)
-        #     chosen_child = np.random.choice(root.children, 1, p=probs)[0]
+        ###################### If you want randomly move, use me
+        # probs = np.array(probs) ** self.exponent
+        # probs = np.clip(probs, eps, 1 - eps)
+        # probs = probs / np.sum(probs)
+        # chosen_child = np.random.choice(root.children, 1, p=probs)[0]
+        max_index = -1
+        max_prob = -1
+        for index, prob in enumerate(probs):
+            if prob > max_prob:
+                max_index = index
+                max_prob = prob
+        chosen_child = root.children[max_index]
 
         self.root_cache = chosen_child
         return chosen_child.move
