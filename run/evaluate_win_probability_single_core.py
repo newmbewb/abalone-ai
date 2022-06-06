@@ -225,7 +225,7 @@ if __name__ == '__main__':
     while len(file_list) > 0:
         f = file_list[0]
         print(f'loading {f}...', flush=True)
-        save_file_name = f'{f}_save.txt'
+        save_file_name = os.path.join(dataset_dir, f'{f}_save.txt')
         full_path = os.path.join(dataset_dir, f)
         pair_list = load_file_board_move_pair(full_path, with_value=True)
         for pair in pair_list:
