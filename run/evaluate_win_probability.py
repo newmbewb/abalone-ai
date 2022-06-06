@@ -79,7 +79,19 @@ def simulate_games(device, q_board_info, encoder, model_path, output_filename, n
         model = load_model(model_path)
         start_time = time.time()
         total_count = 0
+        ############### Comment out me
+        loop_count = 0
+        loop_print_interval = 20
+        loop_start_time = time.time()
+        ###############
         while not empty_queue or len(game_list) > 0:
+            ############### Comment out me
+            loop_count += 1
+            if loop_count % loop_print_interval == 0:
+                runtime = time.time() - loop_start_time
+                print(f'loop speed: {loop_print_interval / runtime}loops/sec')
+                loop_start_time = time.time()
+            ###############
             # Fill game list
             while not empty_queue and len(game_list) + len(pending_game_list) < batch_size:
                 # Get new board and put it in pending_game_list
