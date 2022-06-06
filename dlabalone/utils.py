@@ -94,9 +94,12 @@ def save_file_move_list(filename, move_list):
 def save_file_state_move_pair(filename, pair_list):
     fd = open(filename, 'w')
     # Save metadata
+    advantage = 1  # Dummy value
+    value = 0  # Dummy value
     fd.write(f'{pair_list[0][0].board.size},{len(pair_list)}\n')
     for state, move in pair_list:
-        fd.write(f'{encode_state_to_str(state)}{board_move_seperator}{str(move)}\n')
+        fd.write(f'{encode_state_to_str(state)}{board_move_seperator}{str(move)}'
+                 f'{board_move_seperator}{advantage}{board_move_seperator}{value}\n')
     fd.close()
 
 

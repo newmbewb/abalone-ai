@@ -34,7 +34,6 @@ class ACSimple1(Network):
         super().__init__(name)
         prepare_tf_custom_objects()
 
-
     def model(self, input_shape, num_classes, optimizer=None):
         if self.mode == 'policy':
             model = self._policy_model(input_shape, num_classes, dropout_rate=self.dropout_rate)

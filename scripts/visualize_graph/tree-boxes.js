@@ -45,7 +45,7 @@ function treeBoxes(urlService, jsonData)
 		width = 800 - margin.right - margin.left,
 		height = 400 - margin.top - margin.bottom;
 
-	var rectNode = { width : 180, height : 125, textMargin : 5 },
+	var rectNode = { width : 200, height : 125, textMargin : 5 },
 		tooltip = { width : 150, height : 40, textMargin : 5 };
 	var i = 0,
 		duration = 750,
@@ -218,8 +218,8 @@ function treeBoxes(urlService, jsonData)
 							+ 'Black: ' + d.black + '<br/>'
 							+ 'White: ' + d.white + '<br/>'
 							+ 'Rollouts: ' + d.rollout + '<br/>'
-							+ 'Explorable_moves: ' + d.explorable_moves + '<br/>'
-							+ 'Value: ' + d.value + '<br/>'
+							+ 'Explorable moves: ' + d.explorable_moves + '<br/>'
+							+ 'Critic Score: ' + d.critic_score + '<br/>'
 							+ '</div>';
 				});
 

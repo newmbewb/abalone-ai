@@ -245,6 +245,8 @@ class GamePopulator:
                 # if 'draw' in game_name:
                 #     continue
                 pair_list = load_file_board_move_pair(game_name, with_value)
+                if len(pair_list) == 0:
+                    continue
                 for rotate_count in range(6):
                     # Rotate
                     rotated_pair_list = self.rotate_pair_list(pair_list, rotate_count, with_value)
