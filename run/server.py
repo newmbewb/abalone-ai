@@ -64,7 +64,7 @@ async def accept(websocket, path):
         game = GameState(board, next_player)
 
         # Decode Move
-        stones = map(lambda c: index2xy(int(c)), selected.split(','))
+        stones = map(int, selected.split(','))
         move = Move(stones, num2direction(int(direction)))
         game = game.apply_move(move)
         await websocket.send('false:' + encode_board_str(game.board, Player.black))
