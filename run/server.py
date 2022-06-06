@@ -30,6 +30,19 @@ def num2direction(num):
     return Direction.from_int(index)
 
 
+async def send(websocket, movable, board, new_holes='8', new_stones='8'):
+    await websocket.send(':'.join([movable, board, new_stones, new_holes]))
+
+
+def get_before_and_after(move):
+    stones_before = move.stones
+    stones_after = list(map(lambda x: x + move.direction, stones_before))
+    stones_before = list(set(stones_before) - set(stones_after))
+    stones_after = ','.join(map(str, stones_after))
+    stones_before = ','.join(map(str, stones_before))
+    return stones_before, stones_after
+
+
 async def accept(websocket, path):
     if path == '/mcts':
         bot = MCTSBot(name='MCTS20000r0.01t', num_rounds=20000, temperature=0.01)
@@ -43,15 +56,17 @@ async def accept(websocket, path):
     if 'black:start' in data:
         print(f'{str(datetime.now())}: new game (black); ' + data, flush=True)
         game = GameState.new_game(board_size, reverse=True)
-        await websocket.send('true:'+encode_board_str(game.board, Player.black))
+        await send(websocket, 'true', encode_board_str(game.board, Player.black))
     elif 'white:start' in data:
         print(f'{str(datetime.now())}: new game (white); ' + data, flush=True)
         game = GameState.new_game(board_size)
-        await websocket.send('false:'+encode_board_str(game.board, Player.black))
+        await send(websocket, 'false', encode_board_str(game.board, Player.black))
         t = time.time()
-        game = game.apply_move(bot.select_move(game))
+        move = bot.select_move(game)
+        stones_before, stones_after = get_before_and_after(move)
+        game = game.apply_move(move)
         await asyncio.sleep(update_delay - (time.time() - t))
-        await websocket.send('true:'+encode_board_str(game.board, Player.black))
+        await send(websocket, 'true', encode_board_str(game.board, Player.black), stones_before, stones_after)
     else:
         tag, player, board, selected, direction = data.split(':')
 
@@ -67,7 +82,7 @@ async def accept(websocket, path):
         stones = map(int, selected.split(','))
         move = Move(stones, num2direction(int(direction)))
         game = game.apply_move(move)
-        await websocket.send('false:' + encode_board_str(game.board, Player.black))
+        await send(websocket, 'false', encode_board_str(game.board, Player.black))
         winner = game.winner()
         if winner:
             if winner == Player.black:
@@ -78,16 +93,19 @@ async def accept(websocket, path):
                 await websocket.send('false:white_win')
         else:
             t = time.time()
-            game = game.apply_move(bot.select_move(game))
+            move = bot.select_move(game)
+            stones_before, stones_after = get_before_and_after(move)
+            game = game.apply_move(move)
             winner = game.winner()
             await asyncio.sleep(update_delay - (time.time() - t))
             if winner:
+                await send(websocket, 'false', encode_board_str(game.board, Player.black), stones_before, stones_after)
                 if winner == Player.black:
                     await websocket.send('false:black_win')
                 else:
                     await websocket.send('false:white_win')
             else:
-                await websocket.send('true:' + encode_board_str(game.board, Player.black))
+                await send(websocket, 'true', encode_board_str(game.board, Player.black), stones_before, stones_after)
     print(data, flush=True)
     if win_msg:
         print(win_msg)
