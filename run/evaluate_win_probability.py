@@ -5,6 +5,7 @@ import os
 import queue
 import random
 import time
+from pathlib import Path
 
 import numpy as np
 from keras.models import load_model
@@ -110,6 +111,13 @@ def simulate_games(device, q_board_info, encoder, model_path, output_filename, n
                 game_wrapper = game_list[index]
                 move_probs = predict_output[index]
 
+                # Exponent move_probs
+                move_probs = move_probs ** 3
+                move_probs = np.nan_to_num(move_probs)
+                eps = 1e-6
+                move_probs = np.clip(move_probs, eps, 1 - eps)
+                move_probs = move_probs / np.sum(move_probs)
+
                 # Randomly select move based on the probability
                 # We do not use choice because of performance
                 ranked_moves = np.argsort(move_probs)[::-1]
@@ -170,32 +178,27 @@ def simulate_games(device, q_board_info, encoder, model_path, output_filename, n
     fd_out.close()
 
 
-exclude_list = ['data4096_000433.txt', 'data4096_000221.txt', 'data4096_000655.txt', 'data4096_000068.txt',
-                'data4096_000764.txt', 'data4096_000013.txt', 'data4096_000829.txt', 'data4096_000647.txt',
-                'data4096_000703.txt', 'data4096_000620.txt', 'data4096_000274.txt', 'data4096_000412.txt',
-                'data4096_000787.txt', 'data4096_000451.txt', 'data4096_000724.txt', 'data4096_000879.txt',
-                'data4096_000870.txt', 'data4096_000158.txt',
-
-                'data4096_000635.txt',]
+exclude_list = []
 if __name__ == '__main__':
     # Arguments
     cpu_threads = 1
     use_gpu = True
-    num_games = 50  # recommendation: 50
+    num_games = 100  # recommendation: 50
     batch_size = 128
+    file_batch_size = 1
 
-    dataset_dir = '../data/data_with_value/dataset/'
-    output_dir = '../data/rl_mcts/win_probability_evaluation'
-    model_path = '../data/checkpoints/models/ACSimple1Policy_dropout0.3_FourPlaneEncoder_channels_last_epoch_100.h5'
+    data_home = '../data/rl_mcts/generation01_manual'
+    dataset_dir = os.path.join(data_home, 'dataset')
+    output_dir = os.path.join(data_home, 'win_probability_evaluation')
+    model_path = os.path.join(data_home, 'policy_model.h5')
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
 
     encoder = get_encoder_by_name('fourplane', 5, '', data_format='channels_last')
 
-    file_batch_size = 1
     # Code start from here
     file_list = set(os.listdir(dataset_dir))
     file_list -= set(exclude_list)
     file_list = list(file_list)
-    random.shuffle(file_list)
     m = multiprocessing.Manager()
     # q_board_info = multiprocessing.Queue()
     q_board_info = m.Queue()
