@@ -82,7 +82,7 @@ async def accept(websocket, path):
         stones = map(int, selected.split(','))
         move = Move(stones, num2direction(int(direction)))
         game = game.apply_move(move)
-        await send(websocket, 'false', encode_board_str(game.board, Player.black))
+        # await send(websocket, 'false', encode_board_str(game.board, Player.black))
         winner = game.winner()
         if winner:
             if winner == Player.black:
