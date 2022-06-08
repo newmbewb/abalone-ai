@@ -11,6 +11,7 @@ from dlabalone.ablboard import Board, GameState, Move
 from dlabalone.abltypes import Player, Direction
 from dlabalone.agent.alphabeta import AlphaBetaBot
 from dlabalone.agent.mcts import MCTSBot
+from dlabalone.agent.random_kill_first import RandomKillBot
 from dlabalone.utils import encode_state_to_str, encode_board_str, decode_board_from_str
 
 board_size = 5
@@ -48,12 +49,15 @@ async def accept(websocket, path):
         bot = MCTSBot(name='MCTS20000r0.01t', num_rounds=20000, temperature=0.01)
     elif path == '/ab3':
         bot = AlphaBetaBot(depth=3)
+        # bot = RandomKillBot()
     else:
         bot = None
 
     data = await websocket.recv()
     win_msg = None
-    if 'black:start' in data:
+    if data[:7] == 'record:':
+        print(f'{str(datetime.now())}: {data}', flush=True)
+    elif 'black:start' in data:
         print(f'{str(datetime.now())}: new game (black); ' + data, flush=True)
         game = GameState.new_game(board_size, reverse=True)
         await send(websocket, 'true', encode_board_str(game.board, Player.black))
