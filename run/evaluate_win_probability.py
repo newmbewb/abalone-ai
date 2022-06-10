@@ -79,19 +79,7 @@ def simulate_games(device, q_board_info, encoder, model_path, output_filename, n
         model = load_model(model_path)
         start_time = time.time()
         total_count = 0
-        ############### Comment out me
-        loop_count = 0
-        loop_print_interval = 20
-        loop_start_time = time.time()
-        ###############
         while not empty_queue or len(game_list) > 0:
-            ############### Comment out me
-            loop_count += 1
-            if loop_count % loop_print_interval == 0:
-                runtime = time.time() - loop_start_time
-                print(f'loop speed: {loop_print_interval / runtime}loops/sec')
-                loop_start_time = time.time()
-            ###############
             # Fill game list
             while not empty_queue and len(game_list) + len(pending_game_list) < batch_size:
                 # Get new board and put it in pending_game_list
@@ -194,13 +182,13 @@ exclude_list = []
 if __name__ == '__main__':
     # Arguments
     cpu_threads = 1
-    use_gpu = True
+    use_gpu = False
     num_games = 100  # recommendation: 50
     batch_size = 128
     file_batch_size = 1
 
     data_home = '../data/rl_mcts/generation01_manual'
-    dataset_dir = os.path.join(data_home, 'dataset')
+    dataset_dir = os.path.join(data_home, 'shuffled_moves_for_pc')
     output_dir = os.path.join(data_home, 'win_probability_evaluation')
     model_path = os.path.join(data_home, 'policy_model.h5')
     Path(output_dir).mkdir(parents=True, exist_ok=True)
