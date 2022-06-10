@@ -90,9 +90,18 @@ class MCTSACNode(object):
                     break
         return ret
 
-    def update_unvisited_moves(self, encoder, move_probs):
+    def update_unvisited_moves(self, encoder, move_probs, train=True):
         self.encoded_board = None  # Deleted not encoded board for memory reuse
-        if self.dynamic_width:
+        if not train:
+            sorted_args = np.argsort(-move_probs)
+            self.unvisited_moves = []
+            for idx in sorted_args:
+                move = encoder.decode_move_index(idx)
+                if self.game_state.is_valid_move(move.stones, move.direction):
+                    self.unvisited_moves.append(move)
+                if len(self.unvisited_moves) >= self.max_width:
+                    break
+        elif self.dynamic_width:
             sorted_args = np.argsort(-move_probs)
             maximum_prob = None
             self.unvisited_moves = []
@@ -201,6 +210,7 @@ class MCTSACBot(Agent):
         self.exponent = exponent
         self.root_cache = None
         self.reach_max_depth = False
+        self.train = True
 
     def _get_moves_to_eval(self, node, budget, depth):
         '''
@@ -302,7 +312,7 @@ class MCTSACBot(Agent):
                 actor_input = np.array([node.encoded_board for node in actor_list])
                 actor_output = self.actor.predict_on_batch(actor_input)
                 for node, moves in zip(actor_list, actor_output):
-                    node.update_unvisited_moves(self.encoder, moves)
+                    node.update_unvisited_moves(self.encoder, moves, self.train)
 
 
             # Calculate value for new nodes
@@ -341,7 +351,15 @@ class MCTSACBot(Agent):
         # probs = np.clip(probs, eps, 1 - eps)
         # probs = probs / np.sum(probs)
         # chosen_child = np.random.choice(root.children, 1, p=probs)[0]
-        if MCTSACNode.dynamic_width:
+        if not self.train:
+            max_index = -1
+            max_prob = -1
+            for index, prob in enumerate(probs):
+                if prob > max_prob:
+                    max_index = index
+                    max_prob = prob
+            chosen_child = root.children[max_index]
+        elif MCTSACNode.dynamic_width:
             max_prob = max(probs)
             candidate_idx = []
             candidate_prob_accum = []
