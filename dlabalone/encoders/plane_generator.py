@@ -106,3 +106,65 @@ def calc_opp_layers(board, next_player):
                                 vuln_stones[length].add(point)
 
     return opp_sumito_stones, danger_stones, danger_points, vuln_stones, vuln_points
+
+
+def count_opp_sumito(board, next_player):
+    opp_player = next_player.other
+    sumito_count = 0
+    # for head_point in type(board).valid_grids:
+    for head_point, player in board.grid.items():
+        if player != opp_player:
+            continue
+        for string_direction in [Direction.EAST.value, Direction.SOUTHEAST.value, Direction.SOUTHWEST.value]:
+            for length in range(2, 3 + 1):
+                # Make stone list
+                stones = [head_point]
+                next_point = head_point
+                for i in range(1, length):
+                    next_point = next_point + string_direction
+                    stones.append(next_point)
+
+                # Check stones' player
+                valid = True
+                for stone in stones[1:]:
+                    if opp_player != board.grid.get(stone, None):
+                        valid = False
+                        break
+                if not valid:
+                    continue
+
+                # Check whether it can push
+                directions = [string_direction, (string_direction * -1)]
+                first_stones = [stones[-1], stones[0]]
+                # for direction in directions:
+                for first_stone, direction in zip(first_stones, directions):
+                    # print(stones)
+                    # print(direction)
+                    valid, first_next_stone, minimum_sumito_stone, all_vuln_points_cur = \
+                        _can_push(board, first_stone, length, direction)
+                    if valid:
+                        if minimum_sumito_stone:
+                            sumito_count += 1
+
+    return sumito_count
+
+
+def count_unique_push_moves(moves):
+    moves_three = []
+    moves_two = {}
+    for move in moves:
+        if len(move.stones) == 3:
+            moves_three.append(move)
+        if len(move.stones) == 2:
+            moves_two[frozenset(move.stones)] = move.direction
+
+    redundant_count = 0
+    for move in moves_three:
+        stones1 = frozenset(move.stones[1:])
+        stones2 = frozenset(move.stones[:-1])
+        if stones1 in moves_two and moves_two[stones1] == move.direction:
+            redundant_count += 1
+        if stones2 in moves_two and moves_two[stones2] == move.direction:
+            redundant_count += 1
+
+    return len(moves) - redundant_count
