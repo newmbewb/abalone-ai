@@ -1,10 +1,21 @@
 from dlabalone.abltypes import Player, Direction
 import copy
 
+from dlabalone.encoders.plane_generator import count_unique_push_moves, count_opp_sumito
+
+_win_rate = list()
+_win_rate.append([0.5, 0.435231234, 0.330374753, 0.202020202, 0.025316456, 0])
+_win_rate.append([0.564768766, 0.5, 0.407775872, 0.277913534, 0.080802603, 0.010663199])
+_win_rate.append([0.6696252469999999, 0.592224128, 0.5, 0.389032225, 0.1937105, 0.020094433])
+_win_rate.append([0.797979798, 0.7220864659999999, 0.610967775, 0.5, 0.318860244, 0.083547778])
+_win_rate.append([0.974683544, 0.919197397, 0.8062895, 0.681139756, 0.5, 0.24539859])
+_win_rate.append([1, 0.989336801, 0.979905567, 0.916452222, 0.75460141, 0.5])
+
 
 class Board(object):
     max_xy = 9
     size = 5
+    point2distance = None
     valid_grids = []
 
     @classmethod
@@ -20,7 +31,7 @@ class Board(object):
         return y * cls.max_xy + x
 
     @classmethod
-    def distance_from_center(cls, point):
+    def _distance_from_center(cls, point):
         point = Board.coord_index2xy(point)
         center = (cls.size - 1, cls.size - 1)
         if point == center:
@@ -33,6 +44,10 @@ class Board(object):
             return abs(x - x_center) + abs(y - y_center)
 
     @classmethod
+    def distance_from_center(cls, point):
+        return cls.point2distance[point]
+
+    @classmethod
     def set_size(cls, size):
         cls.size = size
         cls.max_xy = size * 2 - 1
@@ -41,6 +56,12 @@ class Board(object):
             if cls.is_on_grid(index):
                 cls.valid_grids.append(index)
 
+        # Set point2distance
+        if cls.point2distance is None:
+            cls.point2distance = {}
+            for point in range(cls.max_xy * cls.max_xy):
+                cls.point2distance[point] = cls._distance_from_center(point)
+
     def __init__(self, grid=None, dead_stones_black=0, dead_stones_white=0):
         if grid is None:
             self.grid = {}
@@ -48,6 +69,7 @@ class Board(object):
             self.grid = grid
         self.dead_stones_black = dead_stones_black
         self.dead_stones_white = dead_stones_white
+
 
     def __deepcopy__(self, memodict={}):
         return Board(copy.copy(self.grid), self.dead_stones_black, self.dead_stones_white)
@@ -317,6 +339,89 @@ class GameState(object):
             return white_remain / (white_remain + black_remain)
         else:
             return black_remain / (white_remain + black_remain)
+
+    def win_probability_v1(self, player):
+        if player == Player.black:
+            my_kill_score = self.board.dead_stones_white
+            opp_kill_score = self.board.dead_stones_black
+        else:
+            my_kill_score = self.board.dead_stones_black
+            opp_kill_score = self.board.dead_stones_white
+        if my_kill_score >= 6:
+            return 1
+        if opp_kill_score >= 6:
+            return 1
+        return _win_rate[my_kill_score][opp_kill_score]
+
+    @staticmethod
+    def _distance2score(distance):
+        if distance < 24:
+            return 400
+        if distance < 30:
+            return 300
+        if distance < 35:
+            return 200
+        if distance < 40:
+            return 100
+        return 0
+
+    @staticmethod
+    def _grouping2score(grouping):
+        if grouping > 55:
+            return 320
+        if grouping > 50:
+            return 240
+        if grouping > 45:
+            return 160
+        if grouping > 40:
+            return 80
+        return 0
+
+    def pascal_score(self, player, next_push_moves):
+        winner = self.winner()
+        if winner == player:
+            return 1000000
+        elif winner == player.other:
+            return -1000000
+        # Lost marble score
+        score_lost_marble = (self.board.dead_stones_white - self.board.dead_stones_black) * 1000
+        if player == Player.white:
+            score_lost_marble *= -1
+
+        # Center distance score
+        distance_black = 0
+        distance_white = 0
+        for point, player in self.board.grid.items():
+            if player == Player.black:
+                distance_black += self.board.distance_from_center(point)
+            if player == Player.white:
+                distance_white += self.board.distance_from_center(point)
+        score_distance = self._distance2score(distance_black) - self._distance2score(distance_white)
+
+        # Grouping score
+        grouping_black = 0
+        grouping_white = 0
+        for point, player in self.board.grid.items():
+            group_count = 0
+            for d in Direction:
+                neighbor = self.board.grid.get(point + d.value, None)
+                if player == neighbor:
+                    group_count += 1
+            if player == Player.black:
+                grouping_black += group_count
+            if player == Player.white:
+                grouping_white += group_count
+        score_grouping = self._grouping2score(grouping_black) - self._grouping2score(grouping_white)
+
+        # Attack score
+        if self.next_player == player:
+            score_push = (count_unique_push_moves(next_push_moves) - count_opp_sumito(self.board, player.other)) * 40
+        else:
+            score_push = (count_opp_sumito(self.board, player) - count_unique_push_moves(next_push_moves)) * 40
+
+        return score_lost_marble + score_distance + score_grouping + score_push
+
+
 
     def can_last_attack(self):
         if self.next_player == Player.black:
