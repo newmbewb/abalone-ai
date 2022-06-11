@@ -48,9 +48,10 @@ class MCTSACNode(object):
     def update(self):
         assert self.critic_score is not None
         # Update children first
+        child_depth = 0
         for idx, child in enumerate(self.children):
             if idx not in self.not_updated_children:
-                child.update()
+                child_depth = max(child_depth, child.update())
         self.not_updated_children = set()
         # Initialize
         if self.unvisited_moves is None:
@@ -68,6 +69,8 @@ class MCTSACNode(object):
 
         self.score[next_player] = score
         self.score[next_player.other] = -score
+
+        return child_depth + 1
 
     def init_score(self, score):
         self.num_rollouts = 1
@@ -299,6 +302,7 @@ class MCTSACBot(Agent):
             root.init_score(0)
 
         loop_count = 0
+        depth_this_turn = 0
         while root.num_rollouts < self.num_rounds and not self.reach_max_depth:
             loop_count += 1
             if loop_count == 100000:
@@ -335,7 +339,8 @@ class MCTSACBot(Agent):
                     node.init_score(value[0])
 
             # update
-            root.update()
+            depth = root.update()
+            depth_this_turn = max(depth_this_turn, depth)
 
             # tree = root.to_json()
             # print(json.dumps({'tree': tree}))
@@ -393,6 +398,8 @@ class MCTSACBot(Agent):
         self.root_cache = chosen_child
         if 'board_move_pair' in kwargs:
             kwargs['board_move_pair'].append((chosen_child.game_state.board, chosen_child.move))
+        if 'depth' in kwargs:
+            kwargs['depth'].append(depth_this_turn)
         return chosen_child.move
 
     @staticmethod

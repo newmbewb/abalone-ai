@@ -1,7 +1,7 @@
 import re
 
 if __name__ == '__main__':
-    logname = 'log/dataset_size_sensitive_test/ACSimple1Policy_dropout0.30_AlphaAbaloneEncoder_channels_last_1024x200.txt'
+    logname = 'log/rl_mcts/gen01_policy_dropout0.3_old+new_acsimple1.txt'
 
     p1 = re.compile(
         r'.*val_loss: (?P<val_loss>[0-9\.]+) - '

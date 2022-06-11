@@ -8,6 +8,8 @@
       <excludeFolder url="file://$MODULE_DIR$/venv_pypy" />
       <excludeFolder url="file://$MODULE_DIR$/venv" />
       <excludeFolder url="file://$MODULE_DIR$/venv39" />
+      <excludeFolder url="file://$MODULE_DIR$/analysis/log" />
+      <excludeFolder url="file://$MODULE_DIR$/data" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.10 (abalone)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
