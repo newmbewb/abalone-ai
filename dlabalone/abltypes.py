@@ -50,6 +50,13 @@ class Direction(Enum):
             i += 1
         assert False, "Invalid direction (int type)!"
 
+    @staticmethod
+    def from_value(arg):
+        for d in Direction:
+            if d.value == arg:
+                return d.value
+        assert False, "Invalid direction (from_value)!"
+
 
 # def sub(a, b):
 #     return a - b
