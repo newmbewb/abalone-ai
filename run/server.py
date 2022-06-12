@@ -129,12 +129,18 @@ async def accept(websocket, path):
         if data.split(':')[1] == 'record':
             print(f'{str(datetime.now())}: {data}', flush=True)
         elif 'black:start' in data:
+            reverse = True
+            if 'flip_board' in data:
+                reverse = not reverse
             print(f'{str(datetime.now())}: new game (black); ' + data, flush=True)
-            game = GameState.new_game(board_size, reverse=True)
+            game = GameState.new_game(board_size, reverse=reverse)
             await send(websocket, 'true', encode_board_str(game.board, Player.black))
         elif 'white:start' in data:
+            reverse = False
+            if 'flip_board' in data:
+                reverse = not reverse
             print(f'{str(datetime.now())}: new game (white); ' + data, flush=True)
-            game = GameState.new_game(board_size)
+            game = GameState.new_game(board_size, reverse=reverse)
             await send(websocket, 'false', encode_board_str(game.board, Player.black))
             t = time.time()
             move = bot.select_move(game)
