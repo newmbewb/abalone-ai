@@ -65,7 +65,10 @@ class MCTSACNode(object):
             self.num_rollouts += child.num_rollouts
             self.explorable_moves += child.explorable_moves
             score_accum += child.score[next_player] * child.num_rollouts
-        score = score_accum / self.num_rollouts
+        if self.is_terminal():
+            score = self.critic_score
+        else:
+            score = score_accum / self.num_rollouts
 
         self.score[next_player] = score
         self.score[next_player.other] = -score
@@ -342,8 +345,13 @@ class MCTSACBot(Agent):
             depth = root.update()
             depth_this_turn = max(depth_this_turn, depth)
 
-            # tree = root.to_json()
-            # print(json.dumps({'tree': tree}))
+        # ###################### Comment out me
+        # tree = root.to_json()
+        # print(json.dumps({'tree': tree}))
+        # for child in root.children:
+        #     print(child.score[game_state.next_player])
+        #     print(child.move)
+        # ######################
 
         # Select move
         probs = []
@@ -390,8 +398,10 @@ class MCTSACBot(Agent):
             max_prob = -1
             for index, prob in enumerate(probs):
                 if prob > max_prob:
+                    print(f'change move: to {index} ({prob})')
                     max_index = index
                     max_prob = prob
+            print(max_index)
             chosen_child = root.children[max_index]
 
         chosen_child.parent = None
