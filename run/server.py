@@ -172,15 +172,17 @@ async def accept(websocket, path):
                 stones_before, stones_after = get_before_and_after(move)
                 game = game.apply_move(move)
                 winner = game.winner()
-                # await asyncio.sleep(update_delay - (time.time() - t))
+                await asyncio.sleep(update_delay - (time.time() - t))
                 if winner:
-                    await send(websocket, 'false', encode_board_str(game.board, Player.black), stones_before, stones_after)
+                    await send(websocket, 'false', encode_board_str(game.board, Player.black), stones_before,
+                               stones_after)
                     if winner == Player.black:
                         await websocket.send('false:black_win')
                     else:
                         await websocket.send('false:white_win')
                 else:
-                    await send(websocket, 'true', encode_board_str(game.board, Player.black), stones_before, stones_after)
+                    await send(websocket, 'true', encode_board_str(game.board, Player.black), stones_before,
+                               stones_after)
         print(data, flush=True)
         if win_msg:
             print(win_msg)
@@ -200,10 +202,24 @@ def mcts_ac_bot_generator_gen01(width=3, num_rounds=3000):
     return bot
 
 
+def mcts_ac_bot_generator_gen02(width=3, num_rounds=3000):
+    prepare_tf_custom_objects()
+    # tf.compat.v1.disable_eager_execution()
+    encoder = get_encoder_by_name('fourplane', 5, None, data_format='channels_last')
+    actor = load_model(
+        '../data/rl_mcts/generation02_manual/policy_model.h5')
+    critic = load_model(
+        '../data/rl_mcts/generation01_manual/value_model.h5')
+    bot = MCTSACBot(encoder, actor, critic, name=f"bot_mcts_ac_w{width}_r{num_rounds}_gen02", width=width,
+                    num_rounds=num_rounds, temperature=0.01)
+    bot.train = False
+    return bot
+
+
 def main():
     global bot_mcts_ac_r1000, bot_mcts_ac_r2000
-    bot_mcts_ac_r1000 = mcts_ac_bot_generator_gen01(num_rounds=1000)
-    bot_mcts_ac_r2000 = mcts_ac_bot_generator_gen01(num_rounds=2000)
+    bot_mcts_ac_r1000 = mcts_ac_bot_generator_gen02(num_rounds=1000)
+    bot_mcts_ac_r2000 = mcts_ac_bot_generator_gen02(num_rounds=2000)
     start_server = websockets.serve(accept, "0.0.0.0", 9000)
     asyncio.get_event_loop().run_until_complete(start_server)
     asyncio.get_event_loop().run_forever()
