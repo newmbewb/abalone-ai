@@ -98,6 +98,9 @@ class MCTSACNode(object):
 
     def update_unvisited_moves(self, encoder, move_probs, train=True):
         self.encoded_board = None  # Deleted not encoded board for memory reuse
+        finish_move = self.game_state.finish_move()
+        if finish_move is not None:
+            self.unvisited_moves = [finish_move]
         if not train:
             sorted_args = np.argsort(-move_probs)
             self.unvisited_moves = []
@@ -398,10 +401,8 @@ class MCTSACBot(Agent):
             max_prob = -1
             for index, prob in enumerate(probs):
                 if prob > max_prob:
-                    print(f'change move: to {index} ({prob})')
                     max_index = index
                     max_prob = prob
-            print(max_index)
             chosen_child = root.children[max_index]
 
         chosen_child.parent = None

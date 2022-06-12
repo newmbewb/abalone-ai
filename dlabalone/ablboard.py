@@ -17,6 +17,7 @@ class Board(object):
     size = 5
     point2distance = None
     valid_grids = []
+    edge_points = {}
 
     @classmethod
     def coord_index2xy(cls, point_int):
@@ -62,6 +63,15 @@ class Board(object):
             for point in range(cls.max_xy * cls.max_xy):
                 cls.point2distance[point] = cls._distance_from_center(point)
 
+        # Set edge points
+        cls.edge_points = {}
+        for point in cls.valid_grids:
+            for direction in Direction:
+                if (point + direction.value) not in cls.valid_grids:
+                    edge_list = cls.edge_points.get(direction.value, list())
+                    edge_list.append(point)
+                    cls.edge_points[direction.value] = edge_list
+
     def __init__(self, grid=None, dead_stones_black=0, dead_stones_white=0):
         if grid is None:
             self.grid = {}
@@ -69,7 +79,6 @@ class Board(object):
             self.grid = grid
         self.dead_stones_black = dead_stones_black
         self.dead_stones_white = dead_stones_white
-
 
     def __deepcopy__(self, memodict={}):
         return Board(copy.copy(self.grid), self.dead_stones_black, self.dead_stones_white)
@@ -272,6 +281,43 @@ class GameState(object):
         if self.board.dead_stones_black >= 6 or self.board.dead_stones_white >= 6:
             return True
         return False
+
+    def finish_move(self):
+        if self.next_player == Player.black:
+            if self.board.dead_stones_white != 5:
+                return None
+        else:
+            if self.board.dead_stones_black != 5:
+                return None
+
+        for direction in Direction:
+            d_value = direction.value
+            for point in Board.edge_points[d_value]:
+                if self.board.grid.get(point, None) != self.next_player.other:
+                    continue
+                d_value_opp = d_value * -1
+
+                # One stone push
+                next_1_point = point + d_value_opp * 1
+                next_2_point = point + d_value_opp * 2
+                next_1_player = self.board.grid.get(next_1_point, None)
+                next_2_player = self.board.grid.get(next_2_point, None)
+                if next_1_player == self.next_player and next_2_player == self.next_player:
+                    move = Move([next_1_point, next_2_point], d_value)
+                    assert self.is_valid_move(move.stones, move.direction)
+                    return move
+
+                # Two stones push
+                next_3_point = point + d_value_opp * 3
+                next_4_point = point + d_value_opp * 4
+                next_3_player = self.board.grid.get(next_3_point, None)
+                next_4_player = self.board.grid.get(next_4_point, None)
+                if next_1_player == self.next_player.other and next_2_player == self.next_player and \
+                        next_3_player == self.next_player and next_4_player == self.next_player:
+                    move = Move([next_2_point, next_3_point, next_4_point], d_value)
+                    assert self.is_valid_move(move.stones, move.direction)
+                    return move
+        return None
 
     def legal_moves(self, separate_kill=False, push_moves=None):
         ret_kill = []
