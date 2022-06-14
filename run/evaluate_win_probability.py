@@ -34,8 +34,8 @@ class GameWrapper(object):
     def legal_moves(self, **kwargs):
         return self.game_state.legal_moves(**kwargs)
 
-    def can_last_attack(self):
-        return self.game_state.can_last_attack()
+    def finish_move(self):
+        return self.game_state.finish_move()
 
     def apply_move_lite(self, *args):
         board_str = encode_board_str(self.game_state.board)
@@ -110,39 +110,43 @@ def simulate_games(device, q_board_info, encoder, model_path, output_filename, n
             for index in range(len(game_list)):
                 game_wrapper = game_list[index]
                 move_probs = predict_output[index]
-
-                # Exponent move_probs
-                move_probs = move_probs ** 3
-                move_probs = np.nan_to_num(move_probs)
-                eps = 1e-6
-                move_probs = np.clip(move_probs, eps, 1 - eps)
-                move_probs = move_probs / np.sum(move_probs)
-
-                # Randomly select move based on the probability
-                # We do not use choice because of performance
-                ranked_moves = np.argsort(move_probs)[::-1]
-                move = None
-                p_accum = 0
-                for move_idx in range(ranked_moves.shape[0]-1, -1, -1):
-                    p = move_probs[move_idx]
-                    if random.random() - p_accum < p:
-                        move = encoder.decode_move_index(move_idx)
-                        if game_wrapper.game_state.is_valid_move(move.stones, move.direction):
-                            break
-                        else:
-                            move = None
-                    p_accum += p
-                # If non move is selected, we use np.random.choice
-                if move is None:
+                # If we have finish move, use it
+                finish_move = game_wrapper.finish_move()
+                if finish_move is not None:
+                    move = finish_move
+                else:
+                    # Exponent move_probs
+                    move_probs = move_probs ** 3
+                    move_probs = np.nan_to_num(move_probs)
                     eps = 1e-6
                     move_probs = np.clip(move_probs, eps, 1 - eps)
                     move_probs = move_probs / np.sum(move_probs)
-                    num_moves = encoder.num_moves()
-                    ranked_moves = np.random.choice(np.arange(num_moves), num_moves, replace=False, p=move_probs)
-                    for move_idx in ranked_moves:
-                        move = encoder.decode_move_index(move_idx)
-                        if game_wrapper.game_state.is_valid_move(move.stones, move.direction):
-                            break
+
+                    # Randomly select move based on the probability
+                    # We do not use choice because of performance
+                    ranked_moves = np.argsort(move_probs)[::-1]
+                    move = None
+                    p_accum = 0
+                    for move_idx in range(ranked_moves.shape[0]-1, -1, -1):
+                        p = move_probs[move_idx]
+                        if random.random() - p_accum < p:
+                            move = encoder.decode_move_index(move_idx)
+                            if game_wrapper.game_state.is_valid_move(move.stones, move.direction):
+                                break
+                            else:
+                                move = None
+                        p_accum += p
+                    # If non move is selected, we use np.random.choice
+                    if move is None:
+                        eps = 1e-6
+                        move_probs = np.clip(move_probs, eps, 1 - eps)
+                        move_probs = move_probs / np.sum(move_probs)
+                        num_moves = encoder.num_moves()
+                        ranked_moves = np.random.choice(np.arange(num_moves), num_moves, replace=False, p=move_probs)
+                        for move_idx in ranked_moves:
+                            move = encoder.decode_move_index(move_idx)
+                            if game_wrapper.game_state.is_valid_move(move.stones, move.direction):
+                                break
 
                 # Apply move
                 game_wrapper.apply_move_lite(move)
@@ -183,12 +187,12 @@ if __name__ == '__main__':
     # Arguments
     cpu_threads = 1
     use_gpu = False
-    num_games = 100  # recommendation: 50
+    num_games = 50  # recommendation: 50
     batch_size = 128
     file_batch_size = 1
 
-    data_home = '../data/rl_mcts/generation01_manual'
-    dataset_dir = os.path.join(data_home, 'shuffled_moves_for_pc')
+    data_home = '../data/rl_mcts/generation03_manual'
+    dataset_dir = os.path.join(data_home, 'shuffled_moves')
     output_dir = os.path.join(data_home, 'win_probability_evaluation')
     model_path = os.path.join(data_home, 'policy_model.h5')
     Path(output_dir).mkdir(parents=True, exist_ok=True)
@@ -196,9 +200,10 @@ if __name__ == '__main__':
     encoder = get_encoder_by_name('fourplane', 5, '', data_format='channels_last')
 
     # Code start from here
-    file_list = set(os.listdir(dataset_dir))
-    file_list -= set(exclude_list)
-    file_list = list(file_list)
+    file_list = os.listdir(dataset_dir)
+    # file_list = set(os.listdir(dataset_dir))
+    # file_list -= set(exclude_list)
+    # file_list = list(file_list)
     m = multiprocessing.Manager()
     # q_board_info = multiprocessing.Queue()
     q_board_info = m.Queue()
