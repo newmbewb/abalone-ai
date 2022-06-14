@@ -101,7 +101,7 @@ class MCTSACNode(object):
         finish_move = self.game_state.finish_move()
         if finish_move is not None:
             self.unvisited_moves = [finish_move]
-        if not train:
+        elif not train:
             sorted_args = np.argsort(-move_probs)
             self.unvisited_moves = []
             for idx in sorted_args:

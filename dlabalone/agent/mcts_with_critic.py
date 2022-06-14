@@ -63,7 +63,10 @@ class MCTSCriticNode(object):
             self.num_rollouts += child.num_rollouts
             self.explorable_moves += child.explorable_moves
             score_accum += child.score[next_player] * child.num_rollouts
-        score = score_accum / self.num_rollouts
+        if self.is_terminal():
+            score = self.critic_score
+        else:
+            score = score_accum / self.num_rollouts
 
         self.score[next_player] = score
         self.score[next_player.other] = -score
@@ -80,7 +83,11 @@ class MCTSCriticNode(object):
         self.score[self.next_player.other] = -score
 
     def update_unvisited_moves(self):
-        self.unvisited_moves = self.game_state.legal_moves()
+        finish_move = self.game_state.finish_move()
+        if finish_move is not None:
+            self.unvisited_moves = [finish_move]
+        else:
+            self.unvisited_moves = self.game_state.legal_moves()
 
     def get_unvisited_children(self, count):
         ret = []
