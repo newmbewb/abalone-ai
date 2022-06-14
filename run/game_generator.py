@@ -26,8 +26,8 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 draw_name = 'Draw'
 date = datetime.now().strftime('%y%m%d%H%M%S')
-global_filename = f'../data/rl_mcts/generation02_manual/generated_games/game_{date}_%d-%s.txt'
-
+global_filename = f'../data/rl_mcts/generation03_manual/generated_games_pc/game_{date}_%d-%s.txt'
+use_opening = False
 
 def visualize_game(infile, outfile):
     pair_list = load_file_board_move_pair(infile)
@@ -50,7 +50,7 @@ def run_game(idx, bot_generator):
     start_time = time.time()
     depth = []
     while not game.is_over():
-        if not opening_bot.is_end():
+        if use_opening and not opening_bot.is_end():
             move = opening_bot.select_move(game)
         else:
             move = bot.select_move(game)
@@ -162,13 +162,14 @@ def mcts_ac_bot_generator():
     prepare_tf_custom_objects()
 
     num_rounds = 3000
-    width = 'dynamic'
+    width = 3
     # tf.compat.v1.disable_eager_execution()
     encoder = get_encoder_by_name('fourplane', 5, None, data_format='channels_last')
     actor = load_model(
-        '../data/rl_mcts/generation01_manual/policy_model.h5')
+        '../data/rl_mcts/generation02_manual/policy_model.h5')
     critic = load_model(
-        '../data/rl_mcts/generation00/ACSimple1Value_dropout0.5_FourPlaneEncoder_channels_last_epoch_100.h5')
+        '../data/rl_mcts/generation01_manual/value_model.h5')
+        # '../data/rl_mcts/generation00/ACSimple1Value_dropout0.5_FourPlaneEncoder_channels_last_epoch_100.h5')
     return MCTSACBot(encoder, actor, critic, name=f"bot_mcts_ac_w{width}_r{num_rounds}",
                      width=width, num_rounds=num_rounds, temperature=0.01)
     # return MCTSACBot(encoder, actor, critic, name="bot_mcts_ac_w3_r3000", width=3, num_rounds=3000, temperature=0.01)

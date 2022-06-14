@@ -30,6 +30,24 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 draw_name = 'Draw'
 
 
+def _mcts_ac_bot_generator():
+    tf.debugging.disable_traceback_filtering()
+    prepare_tf_custom_objects()
+
+    num_rounds = 3000
+    width = 3
+    # tf.compat.v1.disable_eager_execution()
+    encoder = get_encoder_by_name('fourplane', 5, None, data_format='channels_last')
+    actor = load_model(
+        '../data/rl_mcts/generation02_manual/policy_model.h5')
+    critic = load_model(
+        '../data/rl_mcts/generation01_manual/value_model.h5')
+        # '../data/rl_mcts/generation00/ACSimple1Value_dropout0.5_FourPlaneEncoder_channels_last_epoch_100.h5')
+    return MCTSACBot(encoder, actor, critic, name=f"bot_mcts_ac_w{width}_r{num_rounds}",
+                     width=width, num_rounds=num_rounds, temperature=0.01)
+    # return MCTSACBot(encoder, actor, critic, name="bot_mcts_ac_w3_r3000", width=3, num_rounds=3000, temperature=0.01)
+
+
 def test1():
     game = GameState.new_game(5)
     # bot = RandomKillBot()
@@ -46,7 +64,7 @@ def test1():
     #     '../data/rl_mcts/generation00/ACSimple1Value_dropout0.5_FourPlaneEncoder_channels_last_epoch_100.h5')
     # bot = MCTSACBot(encoder, actor, critic, name="bot_mcts_ac", width=3, num_rounds=300, temperature=0.01)
     # bot = mcts_ac_bot_generator2()
-    bot = AlphaBetaBotV2(depth=2)
+    bot = _mcts_ac_bot_generator()
     print(bot.name)
 
     step = 0
@@ -58,7 +76,7 @@ def test1():
         # max_depths.append(stat['max_depth'])
         print(f'step: {step}')
         step += 1
-        if step == 30:
+        if step == 3:
             break
         if step % 1 == 0:
             runtime = time.time() - start_time
@@ -156,12 +174,28 @@ def compare_bot(bot1_pair, bot2_pair, run_iter=100, threads=None):
     print_win_rate(draw_name)
 
 
+def network_bot_generator_gen03(**kwargs):
+    prepare_tf_custom_objects()
+    encoder = get_encoder_by_name('fourplane', 5, None, data_format='channels_last')
+    return NetworkNaiveBot(
+        encoder, '../data/rl_mcts/generation03_manual/policy_model.h5',
+        name='bot_policy_naive_gen03', selector='exponential')
+
+
+def network_bot_generator_gen02(**kwargs):
+    prepare_tf_custom_objects()
+    encoder = get_encoder_by_name('fourplane', 5, None, data_format='channels_last')
+    return NetworkNaiveBot(
+        encoder, '../data/rl_mcts/generation02_manual/policy_model.h5',
+        name='bot_policy_naive_gen02', selector='exponential')
+
+
 def network_bot_generator_gen01(**kwargs):
     prepare_tf_custom_objects()
     encoder = get_encoder_by_name('fourplane', 5, None, data_format='channels_last')
     return NetworkNaiveBot(
         encoder, '../data/rl_mcts/generation01_manual/policy_model.h5',
-        name='bot_policy_naive_gen01', selector='greedy')
+        name='bot_policy_naive_gen01', selector='exponential')
 
 
 def network_bot_generator_gen00(**kwargs):
@@ -257,6 +291,19 @@ def CriticNaiveBotGenerator_gen01():
     return CriticNaiveBot(encoder, critic, name=f"bot_critic_naive_gen01")
 
 
+################################################## Generation 1
+def mcts_ac_bot_generator_gen02(width=3, num_rounds=3000, temperature=0.01):
+    prepare_tf_custom_objects()
+    # tf.compat.v1.disable_eager_execution()
+    encoder = get_encoder_by_name('fourplane', 5, None, data_format='channels_last')
+    actor = load_model(
+        '../data/rl_mcts/generation02_manual/policy_model.h5')
+    critic = load_model(
+        '../data/rl_mcts/generation01_manual/value_model.h5')
+    return MCTSACBot(encoder, actor, critic, name=f"bot_mcts_ac_w{width}_r{num_rounds}_t{temperature}_gen02",
+                     width=width, num_rounds=num_rounds, temperature=temperature)
+
+
 if __name__ == '__main__':
     # random.seed(0)
     # np.random.seed(0)
@@ -290,53 +337,50 @@ if __name__ == '__main__':
         # bot_B_kwargs = {'width': 3, 'num_rounds': num_rounds, 'temperature': 0.01}
         # compare_bot((bot_A, bot_A_kwargs), (bot_B, bot_B_kwargs), run_iter=run_iter, threads=1)
 
-        bot_A = network_bot_generator_gen01
-        # bot_B = mcts_ac_bot_generator_gen01_critic_gen00
+        bot_A = network_bot_generator_gen03
+        bot_B = network_bot_generator_gen02
+        bot_A_kwargs = {'width': 3, 'num_rounds': num_rounds, 'temperature': 0.01}
+        bot_B_kwargs = {'width': 3, 'num_rounds': num_rounds, 'temperature': 0.01}
+        compare_bot((bot_A, bot_A_kwargs), (bot_B, bot_B_kwargs), run_iter=20, threads=1)
+
+        # ##################################### Temperature test
+        #
         # bot_A = mcts_ac_bot_generator_gen01
-        bot_B = mcts_ac_bot_generator_gen01
-        # bot_B = MCTSCriticBotGenerator_gen01
-        bot_A_kwargs = {'width': 3, 'num_rounds': num_rounds, 'temperature': 0.01}
-        bot_B_kwargs = {'width': 'dynamic', 'num_rounds': num_rounds, 'temperature': 0.01}
-        compare_bot((bot_A, bot_A_kwargs), (bot_B, bot_B_kwargs), run_iter=run_iter, threads=1)
-
-        ##################################### Temperature test
-
-        bot_A = mcts_ac_bot_generator_gen01
-        bot_B = mcts_ac_bot_generator_gen01
-        bot_A_kwargs = {'width': 3, 'num_rounds': num_rounds, 'temperature': 0.01}
-        bot_B_kwargs = {'width': 3, 'num_rounds': num_rounds, 'temperature': 0.1}
-        compare_bot((bot_A, bot_A_kwargs), (bot_B, bot_B_kwargs), run_iter=run_iter, threads=1)
-
-        ##################################### Width test
-        bot_A_kwargs = {'width': 3, 'num_rounds': num_rounds, 'temperature': 0.1}
-        bot_B_kwargs = {'width': 5, 'num_rounds': num_rounds, 'temperature': 0.1}
-        compare_bot((bot_A, bot_A_kwargs), (bot_B, bot_B_kwargs), run_iter=run_iter, threads=1)
-
-        bot_A_kwargs = {'width': 3, 'num_rounds': num_rounds, 'temperature': 0.1}
-        bot_B_kwargs = {'width': 'dynamic', 'num_rounds': num_rounds, 'temperature': 0.1}
-        compare_bot((bot_A, bot_A_kwargs), (bot_B, bot_B_kwargs), run_iter=run_iter, threads=1)
-
-        bot_A_kwargs = {'width': 5, 'num_rounds': num_rounds, 'temperature': 0.1}
-        bot_B_kwargs = {'width': 'dynamic', 'num_rounds': num_rounds, 'temperature': 0.1}
-        compare_bot((bot_A, bot_A_kwargs), (bot_B, bot_B_kwargs), run_iter=run_iter, threads=1)
-
-        ##################################### Round test
-        bot_A_kwargs = {'width': 3, 'num_rounds': 2000, 'temperature': 0.1}
-        bot_B_kwargs = {'width': 3, 'num_rounds': 1000, 'temperature': 0.1}
-        compare_bot((bot_A, bot_A_kwargs), (bot_B, bot_B_kwargs), run_iter=run_iter, threads=1)
-
-        bot_A_kwargs = {'width': 3, 'num_rounds': 3000, 'temperature': 0.1}
-        bot_B_kwargs = {'width': 3, 'num_rounds': 2000, 'temperature': 0.1}
-        compare_bot((bot_A, bot_A_kwargs), (bot_B, bot_B_kwargs), run_iter=run_iter, threads=1)
-
-        ##################################### More Temperature test
-        bot_A_kwargs = {'width': 3, 'num_rounds': num_rounds, 'temperature': 0.1}
-        bot_B_kwargs = {'width': 3, 'num_rounds': num_rounds, 'temperature': 0.2}
-        compare_bot((bot_A, bot_A_kwargs), (bot_B, bot_B_kwargs), run_iter=run_iter, threads=1)
-
-        bot_A_kwargs = {'width': 3, 'num_rounds': num_rounds, 'temperature': 0.2}
-        bot_B_kwargs = {'width': 3, 'num_rounds': num_rounds, 'temperature': 0.5}
-        compare_bot((bot_A, bot_A_kwargs), (bot_B, bot_B_kwargs), run_iter=run_iter, threads=1)
+        # bot_B = mcts_ac_bot_generator_gen01
+        # bot_A_kwargs = {'width': 3, 'num_rounds': num_rounds, 'temperature': 0.01}
+        # bot_B_kwargs = {'width': 3, 'num_rounds': num_rounds, 'temperature': 0.1}
+        # compare_bot((bot_A, bot_A_kwargs), (bot_B, bot_B_kwargs), run_iter=run_iter, threads=1)
+        #
+        # ##################################### Width test
+        # bot_A_kwargs = {'width': 3, 'num_rounds': num_rounds, 'temperature': 0.1}
+        # bot_B_kwargs = {'width': 5, 'num_rounds': num_rounds, 'temperature': 0.1}
+        # compare_bot((bot_A, bot_A_kwargs), (bot_B, bot_B_kwargs), run_iter=run_iter, threads=1)
+        #
+        # bot_A_kwargs = {'width': 3, 'num_rounds': num_rounds, 'temperature': 0.1}
+        # bot_B_kwargs = {'width': 'dynamic', 'num_rounds': num_rounds, 'temperature': 0.1}
+        # compare_bot((bot_A, bot_A_kwargs), (bot_B, bot_B_kwargs), run_iter=run_iter, threads=1)
+        #
+        # bot_A_kwargs = {'width': 5, 'num_rounds': num_rounds, 'temperature': 0.1}
+        # bot_B_kwargs = {'width': 'dynamic', 'num_rounds': num_rounds, 'temperature': 0.1}
+        # compare_bot((bot_A, bot_A_kwargs), (bot_B, bot_B_kwargs), run_iter=run_iter, threads=1)
+        #
+        # ##################################### Round test
+        # bot_A_kwargs = {'width': 3, 'num_rounds': 2000, 'temperature': 0.1}
+        # bot_B_kwargs = {'width': 3, 'num_rounds': 1000, 'temperature': 0.1}
+        # compare_bot((bot_A, bot_A_kwargs), (bot_B, bot_B_kwargs), run_iter=run_iter, threads=1)
+        #
+        # bot_A_kwargs = {'width': 3, 'num_rounds': 3000, 'temperature': 0.1}
+        # bot_B_kwargs = {'width': 3, 'num_rounds': 2000, 'temperature': 0.1}
+        # compare_bot((bot_A, bot_A_kwargs), (bot_B, bot_B_kwargs), run_iter=run_iter, threads=1)
+        #
+        # ##################################### More Temperature test
+        # bot_A_kwargs = {'width': 3, 'num_rounds': num_rounds, 'temperature': 0.1}
+        # bot_B_kwargs = {'width': 3, 'num_rounds': num_rounds, 'temperature': 0.2}
+        # compare_bot((bot_A, bot_A_kwargs), (bot_B, bot_B_kwargs), run_iter=run_iter, threads=1)
+        #
+        # bot_A_kwargs = {'width': 3, 'num_rounds': num_rounds, 'temperature': 0.2}
+        # bot_B_kwargs = {'width': 3, 'num_rounds': num_rounds, 'temperature': 0.5}
+        # compare_bot((bot_A, bot_A_kwargs), (bot_B, bot_B_kwargs), run_iter=run_iter, threads=1)
 
     profiler.end('game')
     profiler.print('game')

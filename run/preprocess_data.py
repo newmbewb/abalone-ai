@@ -8,14 +8,20 @@ from dlabalone.data.populate_games import GamePopulator
 if __name__ == '__main__':
     board_size = 5
     data_per_file = 1024
-    data_home = '../data/rl_mcts/generation01_manual'
-    mode = 'value'
+    data_home = '../data/rl_mcts/generation03_manual'
+    mode = 'policy'
     if mode == 'value':
         orig_data_dir_path = os.path.join(data_home, 'win_probability_evaluation')
+        shuffled_dir = None
     elif mode == 'policy':
-        orig_data_dir_path = os.path.join(data_home, 'generated_games')
+        orig_data_dir_path = os.path.join(data_home, 'generated_games_pc')
+        shuffled_dir = os.path.join(data_home, 'shuffled_moves')
     else:
         assert False
+    if shuffled_dir is not None:
+        Path(shuffled_dir).mkdir(parents=True, exist_ok=True)
+        generate_dataset(orig_data_dir_path, data_per_file, os.path.join(shuffled_dir, f'data{data_per_file}_%06d.txt'),
+                         remove_duplicated=True)
     populated_data_dir = os.path.join(data_home, f'{mode}_populated_games')
     dataset_dir = os.path.join(data_home, f'{mode}_dataset')
     populated_data_name = os.path.join(populated_data_dir, 'game_%d.txt')

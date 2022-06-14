@@ -4,6 +4,7 @@ import queue
 import struct
 import time
 import glob
+from pathlib import Path
 
 from dlabalone.encoders.twoplane import TwoPlaneEncoder
 from dlabalone.utils import load_file_board_move_pair
@@ -101,6 +102,7 @@ class DataGenerator:
         multiprocessing.freeze_support()
         if out_filename_format is None:
             out_filename_format = f'{encoder.name()}_{dataset_type}_{batch}batch_{test_ratio}/%s_%s.npz'
+        Path(out_dir).mkdir(parents=True, exist_ok=True)
         out_filename_format = os.path.join(out_dir, out_filename_format)
         convert_dataset_to_npz(encoder, batch, dataset_dir, out_filename_format, test_ratio, overwrite)
         self.out_filename_format = out_filename_format

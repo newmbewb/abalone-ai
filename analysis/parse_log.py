@@ -1,7 +1,7 @@
 import re
 
 if __name__ == '__main__':
-    logname = 'log/gen01_value/acsimple6_dropout0.3_sgd0.1.txt'
+    logname = 'log/rl_mcts/gen02_policy_dropout0.3_acsimple1_dynamic_sgd.txt'
 
     # p1 = re.compile(
     #     r'.*loss: (?P<loss>[0-9\.]+) - '
