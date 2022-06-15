@@ -119,8 +119,8 @@ def main():
 
     ##################################################################
     # Parameters
-    policy_train_sample_count = int(1024*200 / 0.8 / 12)
-    value_train_sample_count = int(1024*100 / 0.8 / 12)
+    policy_train_sample_count = int(800 * 1024 / 0.8 / 12)
+    value_train_sample_count = int(200 * 1024 / 0.8 / 12)
     winrate_evaluation_game_count = 50
     winrate_evaluation_batch_size = 128
     policy_model_filename = 'policy_model.h5'
@@ -141,10 +141,15 @@ def main():
         ##################################################################
         # Prepare variables
         generation_home = os.path.join(mcts_rl_data_home, f'generation{generation:02d}')
-        prev_generation_home = os.path.join(mcts_rl_data_home, f'generation{generation-1:02d}')
-        # Set models path
-        old_policy_model_path = os.path.join(prev_generation_home, policy_model_filename)
-        old_value_model_path = os.path.join(prev_generation_home, value_model_filename)
+        if generation == 0:
+            prev_generation_home = None
+            old_policy_model_path = None
+            old_value_model_path = None
+        else:
+            prev_generation_home = os.path.join(mcts_rl_data_home, f'generation{generation-1:02d}')
+            # Set models path
+            old_policy_model_path = os.path.join(prev_generation_home, policy_model_filename)
+            old_value_model_path = os.path.join(prev_generation_home, value_model_filename)
         new_policy_model_path = os.path.join(generation_home, policy_model_filename)
         new_value_model_path = os.path.join(generation_home, value_model_filename)
 
@@ -174,7 +179,7 @@ def main():
             gc.collect()
             print('Start to generate games for policy train')
             generate_games(generated_game_dir, encoder, old_policy_model_path, old_value_model_path, step_count,
-                           cpu_threads, use_gpu)
+                           cpu_threads, use_gpu, generation == 0)
         elif stage == 2:
             ##################################################################
             # Stage 2
