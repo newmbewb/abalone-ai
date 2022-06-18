@@ -199,9 +199,9 @@ def mcts_ac_bot_generator_gen01(width=3, num_rounds=3000):
     # tf.compat.v1.disable_eager_execution()
     encoder = get_encoder_by_name('fourplane', 5, None, data_format='channels_last')
     actor = load_model(
-        '../data/rl_mcts/generation01_manual/policy_model.h5')
+        '../data/examples/policy_model.h5')
     critic = load_model(
-        '../data/rl_mcts/generation01_manual/value_model.h5')
+        '../data/examples/value_model.h5')
     bot = MCTSACBot(encoder, actor, critic, name=f"bot_mcts_ac_w{width}_r{num_rounds}_gen01", width=width,
                     num_rounds=num_rounds, temperature=0.01)
     bot.train = False
