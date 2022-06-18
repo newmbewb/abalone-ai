@@ -113,9 +113,16 @@ I ran this project on my PC with _Intel i3-7100 CPU_ and _RTX3080Ti_.
 For each generation I generated enough train set, and it took about 3 days for every generation.
 
 ## Generation vs. Generation
-#### Generation 1 (width 3, 3000 rounds) vs. MCTS(20000 rounds, temperature 0.01) (Generation 0)
+#### Generation 1 (width 3, 3000 rollouts per turn) vs. MCTS(20000 rollouts per turn, temperature 0.01) (Generation 0)
 Generation 1: Wins 23, Losses 0, Draws 0
-#### Generation 2 (width 3, 3000 rounds) vs. Generation 1 (width 3, 3000 rounds)
+#### Generation 2 (width 3, 3000 rollouts per turn) vs. Generation 1 (width 3, 3000 rollouts per turn)
 Generation 2: Wins 10, Losses 0, Draws 0
 
-Generation 2 is strong enough to play against human player.
+Generation 2 is strong enough to play against a human player.
+
+(Please note that 'rollout' means evaluation using value model.)
+
+# Demo Page
+[Demo page](http://52.23.200.158/)
+
+Because it is running on AWS EC2 t2.nano machine, it is extremely slow.
