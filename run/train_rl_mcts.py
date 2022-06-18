@@ -28,7 +28,7 @@ class RLMCTSTrainLogger:
         if os.path.exists(self.log_file):
             self._load_log()
         else:
-            self.generation = 1
+            self.generation = 0
             self.next_stage = 1
 
     def _load_log(self):
