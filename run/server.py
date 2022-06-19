@@ -194,7 +194,7 @@ async def accept(websocket, path):
             print(win_msg)
 
 
-def mcts_ac_bot_generator_gen01(width=3, num_rounds=3000):
+def mcts_ac_bot_generator(width=3, num_rounds=3000):
     prepare_tf_custom_objects()
     # tf.compat.v1.disable_eager_execution()
     encoder = get_encoder_by_name('fourplane', 5, None, data_format='channels_last')
@@ -202,20 +202,6 @@ def mcts_ac_bot_generator_gen01(width=3, num_rounds=3000):
         '../data/examples/policy_model.h5')
     critic = load_model(
         '../data/examples/value_model.h5')
-    bot = MCTSACBot(encoder, actor, critic, name=f"bot_mcts_ac_w{width}_r{num_rounds}_gen01", width=width,
-                    num_rounds=num_rounds, temperature=0.01)
-    bot.train = False
-    return bot
-
-
-def mcts_ac_bot_generator_gen02(width=3, num_rounds=3000):
-    prepare_tf_custom_objects()
-    # tf.compat.v1.disable_eager_execution()
-    encoder = get_encoder_by_name('fourplane', 5, None, data_format='channels_last')
-    actor = load_model(
-        '../data/rl_mcts/generation02_manual/policy_model.h5')
-    critic = load_model(
-        '../data/rl_mcts/generation01_manual/value_model.h5')
     bot = MCTSACBot(encoder, actor, critic, name=f"bot_mcts_ac_w{width}_r{num_rounds}_gen02", width=width,
                     num_rounds=num_rounds, temperature=0.01)
     bot.train = False
@@ -224,8 +210,8 @@ def mcts_ac_bot_generator_gen02(width=3, num_rounds=3000):
 
 def main():
     global bot_mcts_ac_r1000, bot_mcts_ac_r2000
-    bot_mcts_ac_r1000 = mcts_ac_bot_generator_gen02(num_rounds=1000)
-    bot_mcts_ac_r2000 = mcts_ac_bot_generator_gen02(num_rounds=2000)
+    bot_mcts_ac_r1000 = mcts_ac_bot_generator(num_rounds=1000)
+    bot_mcts_ac_r2000 = mcts_ac_bot_generator(num_rounds=2000)
     start_server = websockets.serve(accept, "0.0.0.0", 9000)
     asyncio.get_event_loop().run_until_complete(start_server)
     asyncio.get_event_loop().run_forever()

@@ -129,8 +129,8 @@ def main():
     value_model_filename = 'value_model.h5'
 
     data_per_file = 1024
-    policy_epochs = 100
-    value_epochs = 100
+    policy_epochs = 200
+    value_epochs = 1000
 
     ##################################################################
     # Load last state from a log file
