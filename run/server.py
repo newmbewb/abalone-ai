@@ -6,6 +6,7 @@ import ssl
 import websockets
 from sys import executable
 import os
+from contextlib import asynccontextmanager
 
 from keras.models import load_model
 
@@ -28,9 +29,18 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 board_size = 5
 max_xy = 9
 update_delay = 1
-server_global_lock = asyncio.Lock()
 bot_mcts_ac_r1000 = None
 bot_mcts_ac_r2000 = None
+bot_network_naive = None
+
+
+@asynccontextmanager
+async def lock_none_generator():
+    yield None
+
+
+bot_mcts_ac_r1000_lock = asyncio.Lock()
+bot_mcts_ac_r2000_lock = asyncio.Lock()
 
 
 def index2xy(index):
@@ -107,91 +117,100 @@ async def self_play(websocket):
 
 
 async def accept(websocket, path):
-    global server_global_lock
-    global bot_mcts_ac_r1000, bot_mcts_ac_r2000
-    async with server_global_lock:
-        if path == '/mcts':
-            bot = MCTSBot(name='MCTS20000r0.01t', num_rounds=20000, temperature=0.01)
-        elif path == '/self':
-            return await self_play(websocket)
-        elif path == '/ab3':
-            bot = AlphaBetaBot(depth=3)
-            # bot = RandomKillBot()
-        elif path == '/mcts_ac_r1000':
-            bot = bot_mcts_ac_r1000
-        elif path == '/mcts_ac_r2000':
-            bot = bot_mcts_ac_r2000
-        else:
-            bot = None
+    global lock_none
+    global bot_mcts_ac_r1000, bot_mcts_ac_r2000, bot_network_naive
+    global bot_mcts_ac_r1000_lock, bot_mcts_ac_r2000_lock
 
-        data = await websocket.recv()
-        win_msg = None
-        if data.split(':')[1] == 'record':
-            print(f'{str(datetime.now())}: {data}', flush=True)
-        elif 'black:start' in data:
-            reverse = True
-            if 'flip_board' in data:
-                reverse = not reverse
-            print(f'{str(datetime.now())}: new game (black); ' + data, flush=True)
-            game = GameState.new_game(board_size, reverse=reverse)
-            await send(websocket, 'true', encode_board_str(game.board, Player.black))
-        elif 'white:start' in data:
-            reverse = False
-            if 'flip_board' in data:
-                reverse = not reverse
-            print(f'{str(datetime.now())}: new game (white); ' + data, flush=True)
-            game = GameState.new_game(board_size, reverse=reverse)
-            await send(websocket, 'false', encode_board_str(game.board, Player.black))
-            t = time.time()
+    if path == '/mcts':
+        bot = MCTSBot(name='MCTS10000r0.01t', num_rounds=10000, temperature=0.01)
+        lock = lock_none_generator()
+    elif path == '/self':
+        return await self_play(websocket)
+    elif path == '/ab3':
+        bot = AlphaBetaBot(depth=3)
+        lock = lock_none_generator()
+    elif path == '/mcts_ac_r1000':
+        bot = bot_mcts_ac_r1000
+        lock = bot_mcts_ac_r1000_lock
+    elif path == '/mcts_ac_r2000':
+        bot = bot_mcts_ac_r2000
+        lock = bot_mcts_ac_r2000_lock
+    elif path == '/network_naive':
+        bot = bot_network_naive
+        lock = lock_none_generator()
+    else:
+        return
+
+    data = await websocket.recv()
+    win_msg = None
+    if data.split(':')[1] == 'record':
+        print(f'{str(datetime.now())}: {data}', flush=True)
+    elif 'black:start' in data:
+        reverse = True
+        if 'flip_board' in data:
+            reverse = not reverse
+        print(f'{str(datetime.now())}: new game (black); ' + data, flush=True)
+        game = GameState.new_game(board_size, reverse=reverse)
+        await send(websocket, 'true', encode_board_str(game.board, Player.black))
+    elif 'white:start' in data:
+        reverse = False
+        if 'flip_board' in data:
+            reverse = not reverse
+        print(f'{str(datetime.now())}: new game (white); ' + data, flush=True)
+        game = GameState.new_game(board_size, reverse=reverse)
+        await send(websocket, 'false', encode_board_str(game.board, Player.black))
+        t = time.time()
+        async with lock:
             move = bot.select_move(game)
+        stones_before, stones_after = get_before_and_after(move)
+        game = game.apply_move(move)
+        await asyncio.sleep(update_delay - (time.time() - t))
+        await send(websocket, 'true', encode_board_str(game.board, Player.black), stones_before, stones_after)
+    else:
+        tag, player, board, selected, direction = data.split(':')
+
+        # Decode board
+        board = decode_board_from_str(board, max_xy)
+        if player == 'black':
+            next_player = Player.black
+        else:
+            next_player = Player.white
+        game = GameState(board, next_player)
+
+        # Decode Move
+        stones = map(int, selected.split(','))
+        move = Move(stones, num2direction(int(direction)))
+        game = game.apply_move(move)
+        # await send(websocket, 'false', encode_board_str(game.board, Player.black))
+        winner = game.winner()
+        if winner:
+            if winner == Player.black:
+                win_msg = f"{tag}:win:black"
+                await websocket.send('false:black_win')
+            else:
+                win_msg = f"{tag}:win:white"
+                await websocket.send('false:white_win')
+        else:
+            t = time.time()
+            async with lock:
+                move = bot.select_move(game)
             stones_before, stones_after = get_before_and_after(move)
             game = game.apply_move(move)
-            await asyncio.sleep(update_delay - (time.time() - t))
-            await send(websocket, 'true', encode_board_str(game.board, Player.black), stones_before, stones_after)
-        else:
-            tag, player, board, selected, direction = data.split(':')
-
-            # Decode board
-            board = decode_board_from_str(board, max_xy)
-            if player == 'black':
-                next_player = Player.black
-            else:
-                next_player = Player.white
-            game = GameState(board, next_player)
-
-            # Decode Move
-            stones = map(int, selected.split(','))
-            move = Move(stones, num2direction(int(direction)))
-            game = game.apply_move(move)
-            # await send(websocket, 'false', encode_board_str(game.board, Player.black))
             winner = game.winner()
+            await asyncio.sleep(update_delay - (time.time() - t))
             if winner:
+                await send(websocket, 'false', encode_board_str(game.board, Player.black), stones_before,
+                           stones_after)
                 if winner == Player.black:
-                    win_msg = f"{tag}:win:black"
                     await websocket.send('false:black_win')
                 else:
-                    win_msg = f"{tag}:win:white"
                     await websocket.send('false:white_win')
             else:
-                t = time.time()
-                move = bot.select_move(game)
-                stones_before, stones_after = get_before_and_after(move)
-                game = game.apply_move(move)
-                winner = game.winner()
-                await asyncio.sleep(update_delay - (time.time() - t))
-                if winner:
-                    await send(websocket, 'false', encode_board_str(game.board, Player.black), stones_before,
-                               stones_after)
-                    if winner == Player.black:
-                        await websocket.send('false:black_win')
-                    else:
-                        await websocket.send('false:white_win')
-                else:
-                    await send(websocket, 'true', encode_board_str(game.board, Player.black), stones_before,
-                               stones_after)
-        print(data, flush=True)
-        if win_msg:
-            print(win_msg)
+                await send(websocket, 'true', encode_board_str(game.board, Player.black), stones_before,
+                           stones_after)
+    print(data, flush=True)
+    if win_msg:
+        print(win_msg)
 
 
 def mcts_ac_bot_generator(width=3, num_rounds=3000):
@@ -208,10 +227,19 @@ def mcts_ac_bot_generator(width=3, num_rounds=3000):
     return bot
 
 
+def network_bot_generator(**kwargs):
+    prepare_tf_custom_objects()
+    encoder = get_encoder_by_name('fourplane', 5, None, data_format='channels_last')
+    return NetworkNaiveBot(
+        encoder, '../data/examples/policy_model.h5',
+        name='bot_policy_naive', selector='exponential')
+
+
 def main():
-    global bot_mcts_ac_r1000, bot_mcts_ac_r2000
+    global bot_mcts_ac_r1000, bot_mcts_ac_r2000, bot_network_naive
     bot_mcts_ac_r1000 = mcts_ac_bot_generator(num_rounds=1000)
     bot_mcts_ac_r2000 = mcts_ac_bot_generator(num_rounds=2000)
+    bot_network_naive = network_bot_generator()
     start_server = websockets.serve(accept, "0.0.0.0", 9000)
     asyncio.get_event_loop().run_until_complete(start_server)
     asyncio.get_event_loop().run_forever()
